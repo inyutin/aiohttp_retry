@@ -40,6 +40,8 @@ retry_for_statuses: Optional[Set[int]] = None,  # On which statuses we should re
 retry_exceptions: Optional[Set[Type]] = None,  # On which exceptions we should retry
 ```
 
+**Warn**: `RetryClient` should be closed by `close()`
+
 ### Development
 Before creating PR please run mypy: `mypy -m aiohttp_retry`
 

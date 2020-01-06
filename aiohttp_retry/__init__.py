@@ -15,7 +15,7 @@ class _RequestContext:
                  url: str,  # Just url
                  retry_attempts: int = _RETRY_ATTEMPTS,  # How many times we should retry
                  retry_start_timeout: float = _RETRY_START_TIMEOUT,  # Base timeout time, then it exponentially grow
-                 retry_max_timeout: float = _RETRY_START_TIMEOUT,  # Max possible timeout between tries
+                 retry_max_timeout: float = _RETRY_MAX_TIMEOUT,  # Max possible timeout between tries
                  retry_factor: float = _RETRY_FACTOR,  # How much we increase timeout each time
                  retry_for_statuses: Optional[Set[int]] = None,  # On which statuses we should retry
                  retry_exceptions: Optional[Set[Type]] = None,  # On which exceptions we should retry
@@ -57,7 +57,7 @@ class _RequestContext:
             if self._current_attempt < self._retry_attempts and self._check_code(code):
                 retry_wait = self._exponential_timeout()
                 await asyncio.sleep(retry_wait)
-                await self._do_request()
+                return await self._do_request()
             self._response = response
             return response
 

@@ -3,6 +3,8 @@
 This package is similar to [Tornado-retry-client](https://github.com/wpjunior/tornado-retry-client). \
 Python 3.5+.
 
+**Install**: `pip install aiohttp-retry`.
+
 ### Example of usage:
 ```python
 async def test():
@@ -48,4 +50,3 @@ Before creating PR please run mypy: `mypy -m aiohttp_retry`
 ### ToDo:
 
 - Add more tests
-- Make pip package

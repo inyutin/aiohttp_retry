@@ -4,3 +4,7 @@ env/
 __pycache__/
 .mypy_cache/
 .pytest_cache/
+
+aiohttp_retry.egg-info/
+build/
+dist/

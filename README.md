@@ -3,6 +3,15 @@
 This package is similar to [Tornado-retry-client](https://github.com/wpjunior/tornado-retry-client). \
 Be aware: last request returns as it is. (look second example at **example.py**).
 
+
+### Dependencies
+- python >= 3.5
+
+
+### Development
+- run mypy: `mypy -m aiohttp_retry`
+
+
 ### Example of usage:
 ```.env
 async def test():

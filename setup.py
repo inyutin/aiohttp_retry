@@ -2,9 +2,9 @@ from setuptools import find_packages, setup
 
 setup(
     name='aiohttp_retry',
-    version='0.1',
+    version='0.2',
     description='Simple retry cient for aiohttp',
-    long_description='',
+    long_description='Look github repository: https://github.com/inyutin/aiohttp_retry',
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

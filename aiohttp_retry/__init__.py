@@ -81,8 +81,8 @@ class _RequestContext:
 
 
 class RetryClient:
-    def __init__(self, client: ClientSession, logger: Any = None) -> None:
-        self._client = client
+    def __init__(self, logger: Any = None, *args: Any, **kwargs: Any) -> None:
+        self._client = ClientSession(*args, **kwargs)
         self._closed = False
 
         if logger is None:
@@ -122,3 +122,9 @@ class RetryClient:
     async def close(self) -> None:
         await self._client.close()
         self._closed = True
+
+    async def __aenter__(self) -> 'RetryClient':
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.close()

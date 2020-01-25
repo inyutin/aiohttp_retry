@@ -1,10 +1,20 @@
+import pathlib
 from setuptools import find_packages, setup
+
+
+HERE = pathlib.Path(__file__).parent
+
+
+def read(f):
+    return (HERE / f).read_text('utf-8').strip()
+
 
 setup(
     name='aiohttp_retry',
-    version='0.2',
+    version='1.0',
     description='Simple retry cient for aiohttp',
-    long_description='Look github repository: https://github.com/inyutin/aiohttp_retry',
+    long_description=read('README.rst'),
+    long_description_content_type="text/x-rst",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

@@ -5,21 +5,31 @@ Python 3.5+.
 
 **Install**: `pip install aiohttp-retry`.
 
-### Example of usage:
+### Examples of usage:
 ```python
-async def test():
-    async with ClientSession() as client:
-        retry_client = RetryClient(client)
-        async with retry_client.get("https://google.com") as response:
-            text = await response.text()
-            print(text)
-        await retry_client.close()
+from aiohttp_retry import RetryClient
+
+async def main():
+    retry_client = RetryClient(raise_for_status=False)
+    async with retry_client.get('https://ya.ru', retry_attempts=1) as response:
+        print(response.status)
+        
+    await retry_client.close()
+```
+
+```python
+from aiohttp_retry import RetryClient
+
+async def main():
+    async with RetryClient() as client:
+        async with client.get('https://ya.ru') as response:
+            print(response.status)
 ```
 Look tests for more examples. \
 Be aware: last request returns as it is.
 
 ### Documentation
-`RetryClient` takes a single argument: `ClientSession`. \
+`RetryClient` takes the same arguments as ClientSession[[docs](https://docs.aiohttp.org/en/stable/client_reference.html)] \
 `RetryClient` has methods:
 - get
 - options
@@ -41,8 +51,6 @@ retry_factor: float = 2,  # How much we increase timeout each time
 retry_for_statuses: Optional[Set[int]] = None,  # On which statuses we should retry
 retry_exceptions: Optional[Set[Type]] = None,  # On which exceptions we should retry
 ```
-
-**Warn**: `RetryClient` should be closed by `close()`
 
 ### Development
 Before creating PR please run mypy: `mypy -m aiohttp_retry`

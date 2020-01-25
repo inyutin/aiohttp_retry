@@ -8,3 +8,4 @@ __pycache__/
 aiohttp_retry.egg-info/
 build/
 dist/
+var/

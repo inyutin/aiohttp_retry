@@ -54,7 +54,3 @@ retry_exceptions: Optional[Set[Type]] = None,  # On which exceptions we should r
 
 ### Development
 Before creating PR please run mypy: `mypy -m aiohttp_retry`
-
-### ToDo:
-
-- Add more tests

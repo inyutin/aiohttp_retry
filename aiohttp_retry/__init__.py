@@ -13,6 +13,7 @@ _RETRY_FACTOR = 2
 class _RequestContext:
     def __init__(self, request: Callable[..., Any],  # Request operation, like POST or GET
                  url: str,  # Just url
+                 logger: logging.Logger,
                  retry_attempts: int = _RETRY_ATTEMPTS,  # How many times we should retry
                  retry_start_timeout: float = _RETRY_START_TIMEOUT,  # Base timeout time, then it exponentially grow
                  retry_max_timeout: float = _RETRY_MAX_TIMEOUT,  # Max possible timeout between tries
@@ -23,6 +24,7 @@ class _RequestContext:
                  ) -> None:
         self._request = request
         self._url = url
+        self._logger = logger
 
         self._retry_attempts = retry_attempts
         self._retry_start_timeout = retry_start_timeout
@@ -52,6 +54,7 @@ class _RequestContext:
     async def _do_request(self) -> ClientResponse:
         try:
             self._current_attempt += 1
+            self._logger.warning("Attempt {}/{}".format(self._current_attempt, self._retry_attempts))
             response: ClientResponse = await self._request(self._url, **self._kwargs)
             code = response.status
             if self._current_attempt < self._retry_attempts and self._check_code(code):
@@ -95,29 +98,29 @@ class RetryClient:
             self._logger.warning("Aiohttp retry client was not closed")
 
     @staticmethod
-    def _request(request: Callable[..., Any], url: str, **kwargs: Any) -> _RequestContext:
-        return _RequestContext(request, url, **kwargs)
+    def _request(request: Callable[..., Any], url: str, logger: logging.Logger, **kwargs: Any) -> _RequestContext:
+        return _RequestContext(request, url, logger, **kwargs)
 
     def get(self, url: str, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.get, url, **kwargs)
+        return self._request(self._client.get, url, self._logger, **kwargs)
 
     def options(self, url: str, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.options, url, **kwargs)
+        return self._request(self._client.options, url, self._logger,  **kwargs)
 
     def head(self, url: str, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.head, url, **kwargs)
+        return self._request(self._client.head, url, self._logger, **kwargs)
 
     def post(self, url: str, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.post, url, **kwargs)
+        return self._request(self._client.post, url, self._logger, **kwargs)
 
     def put(self, url: str, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.put, url, **kwargs)
+        return self._request(self._client.put, url, self._logger, **kwargs)
 
     def patch(self, url: str, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.patch, url, **kwargs)
+        return self._request(self._client.patch, url, self._logger, **kwargs)
 
     def delete(self, url: str, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.delete, url, **kwargs)
+        return self._request(self._client.delete, url, self._logger, **kwargs)
 
     async def close(self) -> None:
         await self._client.close()

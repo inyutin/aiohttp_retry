@@ -1,11 +1,11 @@
 from aiohttp import ClientResponseError
 
 from aiohttp_retry import RetryClient
-from tests.app import TestApp
+from tests.app import App
 
 
 async def test_hello(aiohttp_client, loop):
-    test_app = TestApp()
+    test_app = App()
     app = test_app.get_app()
 
     client = await aiohttp_client(app)
@@ -24,7 +24,7 @@ async def test_hello(aiohttp_client, loop):
 
 
 async def test_hello_with_context(aiohttp_client, loop):
-    test_app = TestApp()
+    test_app = App()
     app = test_app.get_app()
 
     client = await aiohttp_client(app)
@@ -42,7 +42,7 @@ async def test_hello_with_context(aiohttp_client, loop):
 
 
 async def test_internal_error(aiohttp_client, loop):
-    test_app = TestApp()
+    test_app = App()
     app = test_app.get_app()
 
     client = await aiohttp_client(app)
@@ -58,7 +58,7 @@ async def test_internal_error(aiohttp_client, loop):
 
 
 async def test_not_found_error(aiohttp_client, loop):
-    test_app = TestApp()
+    test_app = App()
     app = test_app.get_app()
 
     client = await aiohttp_client(app)
@@ -74,7 +74,7 @@ async def test_not_found_error(aiohttp_client, loop):
 
 
 async def test_sometimes_error(aiohttp_client, loop):
-    test_app = TestApp()
+    test_app = App()
     app = test_app.get_app()
 
     client = await aiohttp_client(app)
@@ -93,7 +93,7 @@ async def test_sometimes_error(aiohttp_client, loop):
 
 
 async def test_sometimes_error_with_raise_for_status(aiohttp_client, loop):
-    test_app = TestApp()
+    test_app = App()
     app = test_app.get_app()
 
     client = await aiohttp_client(app, raise_for_status=True)

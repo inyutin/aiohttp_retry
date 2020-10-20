@@ -1,7 +1,7 @@
 from aiohttp import web
 
 
-class TestApp:
+class App:
     def __init__(self):
         self.counter = 0
 

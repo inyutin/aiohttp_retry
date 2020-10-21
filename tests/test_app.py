@@ -114,3 +114,24 @@ async def test_sometimes_error_with_raise_for_status(aiohttp_client, loop):
 
     await retry_client.close()
     await client.close()
+
+
+async def test_override_options(aiohttp_client, loop):
+    test_app = App()
+    app = test_app.get_app()
+
+    client = await aiohttp_client(app)
+    retry_options = RetryOptions(attempts=1)
+    retry_client = RetryClient(retry_options=retry_options)
+    retry_client._client = client
+
+    retry_options = RetryOptions(attempts=5)
+    async with retry_client.get('/sometimes_error', retry_options) as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 3
+
+    await retry_client.close()
+    await client.close()

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import sys
+import warnings
 from abc import abstractmethod
 
 from aiohttp import ClientSession, ClientResponse
@@ -104,6 +105,14 @@ class _RequestContext:
 
 class RetryClient:
     def __init__(self, logger: Optional[_Logger] = None, *args: Any, **kwargs: Any) -> None:
+        warnings.warn(
+            "aiohttp_retry v1.2 is deprecated, please, update to v2.0. "
+            "Be aware, it doesn't have backward compatibility. "
+            "Check https://github.com/inyutin/aiohttp_retry for more details. ",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         self._client = ClientSession(*args, **kwargs)
         self._closed = False
 

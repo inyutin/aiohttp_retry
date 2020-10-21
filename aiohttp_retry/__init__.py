@@ -1,9 +1,15 @@
 import asyncio
 import logging
+import sys
 from abc import abstractmethod
 
 from aiohttp import ClientSession, ClientResponse
-from typing import Any, Callable, Optional, Set, Type, Protocol
+from typing import Any, Callable, Optional, Set, Type
+
+if sys.version_info >= (3, 8):
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol
 
 # Options
 _RETRY_ATTEMPTS = 3

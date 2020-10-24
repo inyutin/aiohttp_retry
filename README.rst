@@ -3,7 +3,7 @@ Simple aiohttp retry client
 
 | This package is similar to
   `Tornado-retry-client <https://github.com/wpjunior/tornado-retry-client>`__.
-| Python 3.5+.
+| Python 3.6 or higher.
 
 **Install**: ``pip install aiohttp-retry``.
 
@@ -73,8 +73,3 @@ argument:
 You can specify ``RetryOptions`` both for ``RetryClient`` and it’s
 methods. ``RetryOptions`` in methods override ``RetryOptions`` defined
 in ``RetryClient`` constructor.
-
-Development
-~~~~~~~~~~~
-
-Before creating PR please run mypy: ``mypy -m aiohttp_retry``

@@ -1,7 +1,7 @@
 # Simple aiohttp retry client
 
 This package is similar to [Tornado-retry-client](https://github.com/wpjunior/tornado-retry-client). \
-Python 3.5+.
+Python 3.6 or higher.
 
 **Install**: `pip install aiohttp-retry`.
 

@@ -36,3 +36,6 @@ jobs:
         PYTHONPATH: .
       run: |
         pytest
+    - name: Test with mypy
+      run: |
+        mypy -m aiohttp_retry 

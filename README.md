@@ -64,6 +64,3 @@ class RetryOptions:
 ```
 You can specify `RetryOptions` both for `RetryClient` and it's methods. 
 `RetryOptions` in methods override `RetryOptions` defined in `RetryClient` constructor.
-
-### Development
-Before creating PR please run mypy: `mypy -m aiohttp_retry`

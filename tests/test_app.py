@@ -135,3 +135,22 @@ async def test_override_options(aiohttp_client, loop):
 
     await retry_client.close()
     await client.close()
+
+
+async def test_hello_awaitable(aiohttp_client, loop):
+    test_app = App()
+    app = test_app.get_app()
+
+    client = await aiohttp_client(app)
+    retry_client = RetryClient()
+    retry_client._client = client
+
+    response = await retry_client.get('/ping')
+    text = await response.text()
+    assert response.status == 200
+    assert text == 'Ok!'
+
+    assert test_app.counter == 1
+
+    await retry_client.close()
+    await client.close()

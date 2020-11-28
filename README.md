@@ -22,6 +22,18 @@ async def main():
         
     await retry_client.close()
 ```
+```python
+from aiohttp_retry import RetryClient, RetryOptions
+
+async def main():
+    retry_options = RetryOptions(attempts=1)
+    retry_client = RetryClient(raise_for_status=False, retry_options=retry_options)
+
+    response = await retry_client.get('/ping')
+    print(response.status)
+        
+    await retry_client.close()
+```
 
 ```python
 from aiohttp_retry import RetryClient

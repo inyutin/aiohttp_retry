@@ -4,7 +4,7 @@ import sys
 from abc import abstractmethod
 
 from aiohttp import ClientSession, ClientResponse
-from typing import Any, Callable, Optional, Set, Type
+from typing import Any, Callable, Generator, Optional, Set, Type
 
 if sys.version_info >= (3, 8):
     from typing import Protocol
@@ -95,6 +95,9 @@ class _RequestContext:
                         return await self._do_request()
 
             raise e
+
+    def __await__(self) -> Generator[Any, None, ClientResponse]:
+        return self.__aenter__().__await__()
 
     async def __aenter__(self) -> ClientResponse:
         return await self._do_request()

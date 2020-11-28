@@ -11,7 +11,7 @@ def read(f):
 
 setup(
     name='aiohttp_retry',
-    version='2.0',
+    version='2.1',
     description='Simple retry cient for aiohttp',
     long_description=read('README.rst'),
     long_description_content_type="text/x-rst",

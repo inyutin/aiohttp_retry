@@ -73,3 +73,6 @@ argument:
 You can specify ``RetryOptions`` both for ``RetryClient`` and it’s
 methods. ``RetryOptions`` in methods override ``RetryOptions`` defined
 in ``RetryClient`` constructor.
+
+``RetryClient`` add **current attempt number** to ``request_trace_ctx`` (see examples,
+for more info see `aiohttp doc <https://docs.aiohttp.org/en/stable/client_advanced.html#aiohttp-client-tracing>`__)

@@ -62,6 +62,7 @@ class _RequestContext:
         self._logger = logger
         self._retry_options = retry_options
         self._kwargs = kwargs
+        self._trace_request_ctx = kwargs.pop('trace_request_ctx', {})
 
         self._current_attempt = 0
         self._response: Optional[ClientResponse] = None
@@ -73,11 +74,21 @@ class _RequestContext:
     def _check_code(self, code: int) -> bool:
         return 500 <= code <= 599 or code in self._retry_options.statuses
 
+    def _request_coro(self) -> Any:
+        return self._request(
+            self._url,
+            **self._kwargs,
+            trace_request_ctx={
+                'current_attempt': self._current_attempt,
+                **self._trace_request_ctx,
+            },
+        )
+
     async def _do_request(self) -> ClientResponse:
         try:
             self._current_attempt += 1
             self._logger.debug("Attempt {} out of {}".format(self._current_attempt, self._retry_options.attempts))
-            response: ClientResponse = await self._request(self._url, **self._kwargs)
+            response: ClientResponse = await self._request_coro()
             code = response.status
             if self._current_attempt < self._retry_options.attempts and self._check_code(code):
                 retry_wait = self._exponential_timeout()

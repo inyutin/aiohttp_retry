@@ -1,4 +1,9 @@
+from types import SimpleNamespace
+
 from aiohttp import ClientResponseError
+from aiohttp import ClientSession
+from aiohttp import TraceConfig
+from aiohttp import TraceRequestStartParams
 
 from aiohttp_retry import RetryClient, RetryOptions
 from tests.app import App
@@ -154,3 +159,36 @@ async def test_hello_awaitable(aiohttp_client, loop):
 
     await retry_client.close()
     await client.close()
+
+
+async def test_add_trace_request_ctx(aiohttp_client, loop):
+    async def on_request_start(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestStartParams,
+    ) -> None:
+        actual_request_contexts.append(trace_config_ctx)
+
+    actual_request_contexts = []
+    test_app = App()
+    app = test_app.get_app()
+
+    trace_config = TraceConfig()
+    trace_config.on_request_start.append(on_request_start)  # type: ignore
+
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+    retry_client = RetryClient()
+    retry_client._client = client
+
+    async with retry_client.get('/sometimes_error', trace_request_ctx={'foo': 'bar'}):
+        assert test_app.counter == 3
+
+    assert actual_request_contexts == [
+        SimpleNamespace(
+            trace_request_ctx={
+                'foo': 'bar',
+                'current_attempt': i + 1,
+            },
+        )
+        for i in range(3)
+    ]

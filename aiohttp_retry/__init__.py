@@ -55,12 +55,14 @@ class _RequestContext:
         url: str,  # Just url
         logger: _Logger,
         retry_options: RetryOptions,
+        raise_for_status: bool = False,
         **kwargs: Any
     ) -> None:
         self._request = request
         self._url = url
         self._logger = logger
         self._retry_options = retry_options
+        self._raise_for_status = raise_for_status
         self._kwargs = kwargs
 
         self._current_attempt = 0
@@ -84,6 +86,8 @@ class _RequestContext:
                 await asyncio.sleep(retry_wait)
                 return await self._do_request()
             self._response = response
+            if self._raise_for_status:
+                response.raise_for_status()
             return response
 
         except Exception as e:
@@ -113,6 +117,7 @@ class RetryClient:
         self,
         logger: Optional[_Logger] = None,
         retry_options: RetryOptions = RetryOptions(),
+        raise_for_status: bool = False,
         *args: Any, **kwargs: Any
     ) -> None:
         self._client = ClientSession(*args, **kwargs)
@@ -123,6 +128,7 @@ class RetryClient:
 
         self._logger: _Logger = logger
         self._retry_options: RetryOptions = retry_options
+        self._raise_for_status: bool = raise_for_status
 
     def __del__(self) -> None:
         if not self._closed:
@@ -134,32 +140,42 @@ class RetryClient:
         url: str,
         logger: _Logger,
         retry_options: Optional[RetryOptions] = None,
+        raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
         if retry_options is None:
             retry_options = self._retry_options
-        return _RequestContext(request, url, logger, retry_options, **kwargs)
+        if raise_for_status is None:
+            raise_for_status = self._raise_for_status
+        return _RequestContext(request, url, logger, retry_options, raise_for_status, **kwargs)
 
-    def get(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.get, url, self._logger, retry_options, **kwargs)
+    def get(self, url: str, retry_options: Optional[RetryOptions] = None,
+            raise_for_status: Optional[bool] = None, **kwargs: Any) -> _RequestContext:
+        return self._request(self._client.get, url, self._logger, retry_options, raise_for_status, **kwargs)
 
-    def options(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.options, url, self._logger, retry_options, **kwargs)
+    def options(self, url: str, retry_options: Optional[RetryOptions] = None,
+                raise_for_status: Optional[bool] = None, **kwargs: Any) -> _RequestContext:
+        return self._request(self._client.options, url, self._logger, retry_options, raise_for_status, **kwargs)
 
-    def head(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.head, url, self._logger, retry_options, **kwargs)
+    def head(self, url: str, retry_options: Optional[RetryOptions] = None,
+             raise_for_status: Optional[bool] = None, **kwargs: Any) -> _RequestContext:
+        return self._request(self._client.head, url, self._logger, retry_options, raise_for_status, **kwargs)
 
-    def post(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.post, url, self._logger, retry_options, **kwargs)
+    def post(self, url: str, retry_options: Optional[RetryOptions] = None,
+             raise_for_status: Optional[bool] = None, **kwargs: Any) -> _RequestContext:
+        return self._request(self._client.post, url, self._logger, retry_options, raise_for_status, **kwargs)
 
-    def put(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.put, url, self._logger, retry_options, **kwargs)
+    def put(self, url: str, retry_options: Optional[RetryOptions] = None,
+            raise_for_status: Optional[bool] = None, **kwargs: Any) -> _RequestContext:
+        return self._request(self._client.put, url, self._logger, retry_options, raise_for_status, **kwargs)
 
-    def patch(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.patch, url, self._logger, retry_options, **kwargs)
+    def patch(self, url: str, retry_options: Optional[RetryOptions] = None,
+              raise_for_status: Optional[bool] = None, **kwargs: Any) -> _RequestContext:
+        return self._request(self._client.patch, url, self._logger, retry_options, raise_for_status, **kwargs)
 
-    def delete(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
-        return self._request(self._client.delete, url, self._logger, retry_options, **kwargs)
+    def delete(self, url: str, retry_options: Optional[RetryOptions] = None,
+               raise_for_status: Optional[bool] = None, **kwargs: Any) -> _RequestContext:
+        return self._request(self._client.delete, url, self._logger, retry_options, raise_for_status, **kwargs)
 
     async def close(self) -> None:
         await self._client.close()

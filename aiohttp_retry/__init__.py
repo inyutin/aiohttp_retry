@@ -4,7 +4,7 @@ import sys
 from abc import abstractmethod
 
 from aiohttp import ClientSession, ClientResponse
-from typing import Any, Callable, Generator, Optional, Set, Type
+from typing import Any, Callable, Dict, Generator, Optional, Set, Type
 
 if sys.version_info >= (3, 8):
     from typing import Protocol
@@ -138,7 +138,13 @@ class RetryClient:
     ) -> _RequestContext:
         if retry_options is None:
             retry_options = self._retry_options
-        return _RequestContext(request, url, logger, retry_options, **kwargs)
+        kwargs.update(retry_options=retry_options)
+        url = self.filter_request(request.__name__.upper(), url, kwargs)
+        return _RequestContext(request, url, logger, **kwargs)
+
+    def filter_request(self, method: str, url: str, kwargs: Dict[str, Any]) -> str:
+        """Override to modify the url or kwargs or raise an exception."""
+        return url
 
     def get(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.get, url, self._logger, retry_options, **kwargs)

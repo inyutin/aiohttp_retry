@@ -1,4 +1,5 @@
 from aiohttp import ClientResponseError
+import pytest
 
 from aiohttp_retry import RetryClient, RetryOptions
 from tests.app import App
@@ -154,3 +155,53 @@ async def test_hello_awaitable(aiohttp_client, loop):
 
     await retry_client.close()
     await client.close()
+
+
+async def test_filter_request_block_url():
+    class FilteringClient(RetryClient):
+        def filter_request(self, method, url, kwargs):
+            if url.startswith('http://'):
+                raise ValueError('only secure HTTP requests are allowed')
+            return url
+
+    client = FilteringClient()
+    with pytest.raises(ValueError, match='only secure HTTP requests are allowed'):
+        client.get('http://example.com')
+    client.get('https://example.com')._url == 'https://example.com'
+
+
+async def test_filter_request_default_headers():
+    class FilteringClient(RetryClient):
+        def filter_request(self, method, url, kwargs):
+            headers = kwargs.setdefault('headers', {})
+            headers['User-Agent'] = 'custom-agent'
+            return url
+
+    client = FilteringClient()
+    client.get('')._kwargs == {'headers': {'User-Agent': 'custom-agent'}}
+    client.get('', headers={'Accept-Encoding': 'gzip, deflate'})._kwargs == {
+        'headers': {'Accept-Encoding': 'gzip, deflate', 'User-Agent': 'custom-agent'}}
+    client.get('', headers={'User-Agent': 'python'})._kwargs == {'headers': {'User-Agent': 'custom-agent'}}
+
+
+async def test_filter_request_method():
+    filter_method: str
+
+    class FilteringClient(RetryClient):
+        def filter_request(self, method, url, kwargs):
+            nonlocal filter_method
+            filter_method = method
+
+    client = FilteringClient()
+    client.get('')
+    assert filter_method == 'GET'
+    client.post('')
+    assert filter_method == 'POST'
+    client.put('')
+    assert filter_method == 'PUT'
+    client.patch('')
+    assert filter_method == 'PATCH'
+    client.delete('')
+    assert filter_method == 'DELETE'
+    client.options('')
+    assert filter_method == 'OPTIONS'

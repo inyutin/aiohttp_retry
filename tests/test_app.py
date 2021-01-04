@@ -1,3 +1,4 @@
+import random
 from types import SimpleNamespace
 
 from aiohttp import ClientResponseError
@@ -5,7 +6,7 @@ from aiohttp import ClientSession
 from aiohttp import TraceConfig
 from aiohttp import TraceRequestStartParams
 
-from aiohttp_retry import RetryClient, RetryOptions
+from aiohttp_retry import RetryClient, RetryOptions, ExponentialRetry, RandomRetry, ListRetry
 from tests.app import App
 
 
@@ -194,3 +195,22 @@ async def test_add_trace_request_ctx(aiohttp_client, loop):
         )
         for i in range(3)
     ]
+
+
+def test_retry_timeout_exponential_backoff():
+    retry = ExponentialRetry(attempts=10)
+    timeouts = [retry.get_timeout(x) for x in range(10)]
+    assert timeouts == [0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 30.0]
+
+
+def test_retry_timeout_random():
+    retry = RandomRetry(attempts=10, random_func=random.Random(0).random)
+    timeouts = [round(retry.get_timeout(x), 2) for x in range(10)]
+    assert timeouts == [2.55, 2.3, 1.32, 0.85, 1.58, 1.27, 2.37, 0.98, 1.48, 1.79]
+
+
+def test_retry_timeout_list():
+    expected = [1.2, 2.1, 3.4, 4.3, 4.5, 5.4, 5.6, 6.5, 6.7, 7.6]
+    retry = ListRetry(expected)
+    timeouts = [retry.get_timeout(x) for x in range(10)]
+    assert timeouts == expected

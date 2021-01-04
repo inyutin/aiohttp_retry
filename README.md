@@ -1,6 +1,5 @@
 # Simple aiohttp retry client
 
-This package is similar to [Tornado-retry-client](https://github.com/wpjunior/tornado-retry-client). \
 Python 3.6 or higher.
 
 **Install**: `pip install aiohttp-retry`.
@@ -98,22 +97,27 @@ Be aware: last request returns as it is.
 
 They are same as for `ClientSession`, but take one possible additional argument: 
 ```python
-from typing import Optional, Set, Type
-
-class RetryOptions:
+class RetryOptionsBase:
     def __init__(
         self,
         attempts: int = 3,  # How many times we should retry
-        start_timeout: float = 0.1,  # Base timeout time, then it exponentially grow
-        max_timeout: float = 30.0,  # Max possible timeout between tries
-        factor: float = 2.0,  # How much we increase timeout each time
-        statuses: Optional[Set[int]] = None,  # On which statuses we should retry
-        exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
-    )
-    ...
+        statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
+        exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+    ):
+        ...
+
+    @abc.abstractmethod
+    def get_timeout(self, attempt: int) -> float:
+        raise NotImplementedError
+
 ```
 You can specify `RetryOptions` both for `RetryClient` and it's methods. 
 `RetryOptions` in methods override `RetryOptions` defined in `RetryClient` constructor.
+
+You can define your own timeouts logic or use: 
+- ```ExponentialRetry``` with exponential backoff
+- ```RandomRetry``` for random backoff
+- ```ListRetry``` with backoff you predefine by list
 
 #### Request Trace Context
 `RetryClient` add *current attempt number* to `request_trace_ctx` (see examples, 

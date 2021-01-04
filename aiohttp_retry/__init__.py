@@ -74,22 +74,21 @@ class _RequestContext:
     def _check_code(self, code: int) -> bool:
         return 500 <= code <= 599 or code in self._retry_options.statuses
 
-    def _request_coro(self) -> Any:
-        return self._request(
-            self._url,
-            **self._kwargs,
-            trace_request_ctx={
-                'current_attempt': self._current_attempt,
-                **self._trace_request_ctx,
-            },
-        )
-
     async def _do_request(self) -> ClientResponse:
         try:
             self._current_attempt += 1
             self._logger.debug("Attempt {} out of {}".format(self._current_attempt, self._retry_options.attempts))
-            response: ClientResponse = await self._request_coro()
+
+            response: ClientResponse = await self._request(
+                self._url,
+                **self._kwargs,
+                trace_request_ctx={
+                    'current_attempt': self._current_attempt,
+                    **self._trace_request_ctx,
+                },
+            )
             code = response.status
+
             if self._current_attempt < self._retry_options.attempts and self._check_code(code):
                 retry_wait = self._exponential_timeout()
                 await asyncio.sleep(retry_wait)

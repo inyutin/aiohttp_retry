@@ -44,6 +44,7 @@ async def main():
             print(response.status)
 ```
 
+You can also add some logic, F.E. logging, on failures by using trace mechanic.
 ```python
 import logging
 import sys

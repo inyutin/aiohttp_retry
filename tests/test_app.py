@@ -162,23 +162,25 @@ async def test_hello_awaitable(aiohttp_client, loop):
 
 
 async def test_add_trace_request_ctx(aiohttp_client, loop):
+    actual_request_contexts = []
+
     async def on_request_start(
-        session: ClientSession,
+        _: ClientSession,
         trace_config_ctx: SimpleNamespace,
-        params: TraceRequestStartParams,
+        __: TraceRequestStartParams,
     ) -> None:
         actual_request_contexts.append(trace_config_ctx)
 
-    actual_request_contexts = []
     test_app = App()
-    app = test_app.get_app()
 
     trace_config = TraceConfig()
     trace_config.on_request_start.append(on_request_start)  # type: ignore
 
-    client = await aiohttp_client(app, trace_configs=[trace_config])
     retry_client = RetryClient()
-    retry_client._client = client
+    retry_client._client = await aiohttp_client(
+        test_app.get_app(),
+        trace_configs=[trace_config]
+    )
 
     async with retry_client.get('/sometimes_error', trace_request_ctx={'foo': 'bar'}):
         assert test_app.counter == 3

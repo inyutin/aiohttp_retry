@@ -1,0 +1,29 @@
+name: Publish Python package to PyPI
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build-n-publish:
+    name: Build and publish Python package to PyPI
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@master
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - name: Install pypa/build
+        run: >-
+          python3 -m pip install --user --upgrade setuptools wheel
+      - name: Build a binary wheel and a source tarball
+        run: >-
+          python3 setup.py sdist bdist_wheel
+
+      - name: Publish distribution 📦 to PyPI
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

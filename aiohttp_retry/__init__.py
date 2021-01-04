@@ -121,6 +121,7 @@ class _RequestContext:
         self._logger = logger
         self._retry_options = retry_options
         self._kwargs = kwargs
+        self._trace_request_ctx = kwargs.pop('trace_request_ctx', {})
 
         self._response: Optional[ClientResponse] = None
 
@@ -141,7 +142,14 @@ class _RequestContext:
                 response.close()
                 response = None
             try:
-                response = await self._request(self._url, **self._kwargs)
+                response = await self._request(
+                    self._url,
+                    **self._kwargs,
+                    trace_request_ctx={
+                        'current_attempt': self._current_attempt,
+                        **self._trace_request_ctx,
+                    },
+                )
             except Exception as exc:
                 if not self._check_exception(exc):
                     raise

@@ -1,20 +1,16 @@
-import pathlib
 from setuptools import find_packages, setup
 
 
-HERE = pathlib.Path(__file__).parent
-
-
-def read(f):
-    return (HERE / f).read_text('utf-8').strip()
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
 
 
 setup(
     name='aiohttp_retry',
-    version='2.1',
+    version='2.2',
     description='Simple retry cient for aiohttp',
-    long_description=read('README.rst'),
-    long_description_content_type="text/x-rst",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

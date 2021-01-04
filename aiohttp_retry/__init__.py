@@ -1,12 +1,13 @@
+import abc
 import asyncio
-import itertools
 import logging
 import random
 import sys
 from abc import abstractmethod
+from warnings import warn
 
 from aiohttp import ClientSession, ClientResponse
-from typing import Any, Awaitable, Callable, Generator, Iterable, Optional, Set, Tuple, Type
+from typing import Any, Callable, Generator, Optional, Set, Type, Iterable, List
 
 if sys.version_info >= (3, 8):
     from typing import Protocol
@@ -26,23 +27,28 @@ class _Logger(Protocol):
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None: pass
 
 
-_TimeoutsGenerator = Generator[float, Tuple[Optional[ClientResponse], Optional[Exception]], None]
-
-
 class RetryOptionsBase:
     def __init__(
         self,
+        attempts: int = 3,  # How many times we should retry
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
     ):
-        self.statuses = set() if statuses is None else set(statuses)
-        self.exceptions = set() if exceptions is None else set(exceptions)
+        self.attempts: int = attempts
+        if statuses is None:
+            statuses = set()
+        self.statuses: Set[int] = statuses
 
-    def timeouts(self) -> _TimeoutsGenerator:
+        if exceptions is None:
+            exceptions = set()
+        self.exceptions: Set[Type[Exception]] = exceptions
+
+    @abc.abstractmethod
+    def get_timeout(self, attempt: int) -> float:
         raise NotImplementedError
 
 
-class RetryOptions(RetryOptionsBase):
+class ExponentialRetry(RetryOptionsBase):
     def __init__(
         self,
         attempts: int = 3,  # How many times we should retry
@@ -52,65 +58,63 @@ class RetryOptions(RetryOptionsBase):
         statuses: Optional[Set[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
     ):
-        super().__init__(statuses, exceptions)
-        self.attempts: int = attempts
-        self.start_timeout: float = start_timeout
-        self.max_timeout: float = max_timeout
-        self.factor: float = factor
+        super().__init__(attempts, statuses, exceptions)
 
-    def timeouts(self) -> _TimeoutsGenerator:
+        self._start_timeout: float = start_timeout
+        self._max_timeout: float = max_timeout
+        self._factor: float = factor
+
+    def get_timeout(self, attempt: int) -> float:
         """Return timeout with exponential backoff."""
-        yield self.attempts
-        for attempt in range(self.attempts):
-            yield self.start_timeout * (self.factor ** attempt)
+        timeout = self._start_timeout * (self._factor ** attempt)
+        return min(timeout, self._max_timeout)
 
 
-ExponentialRetry = RetryOptions
+def RetryOptions(*args, **kwargs) -> ExponentialRetry:
+    warn("RetryOptions is deprecated, use ExponentialRetry")
+    return ExponentialRetry(*args, **kwargs)
 
 
 class RandomRetry(RetryOptionsBase):
     def __init__(
         self,
         attempts: int = 3,  # How many times we should retry
-        min_timeout: float = 0.1,  # Minimum possible timeout
-        max_timeout: float = 3.0,  # Maximum possible timeout between tries
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
-        random: Callable[[], float] = random.random,  # Random number generator
+        min_timeout: float = 0.1,  # Minimum possible timeout
+        max_timeout: float = 3.0,  # Maximum possible timeout between tries
+        random_func: Callable[[], float] = random.random,  # Random number generator
     ):
-        super().__init__(statuses, exceptions)
+        super().__init__(attempts, statuses, exceptions)
         self.attempts: int = attempts
         self.min_timeout: float = min_timeout
         self.max_timeout: float = max_timeout
-        self.random = random
+        self.random = random_func
 
-    def timeouts(self) -> _TimeoutsGenerator:
+    def get_timeout(self, attempt: int) -> float:
         """Generate random timeouts."""
-        yield self.attempts
-        for _ in range(self.attempts):
-            yield self.min_timeout + self.random() * (self.max_timeout - self.min_timeout)
+        return self.min_timeout + self.random() * (self.max_timeout - self.min_timeout)
 
 
 class ListRetry(RetryOptionsBase):
     def __init__(
         self,
-        timeouts: Iterable[float],
+        timeouts: List[float],
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
     ):
-        self.timeout_list = list(timeouts)
-        super().__init__(statuses, exceptions)
+        self.timeouts = timeouts
+        super().__init__(len(timeouts), statuses, exceptions)
 
-    def timeouts(self) -> _TimeoutsGenerator:
-        """Yield timeouts from a list."""
-        yield len(self.timeout_list)
-        yield from self.timeout_list
+    def get_timeout(self, attempt: int) -> float:
+        """timeouts from a defined list."""
+        return self.timeouts[attempt]
 
 
 class _RequestContext:
     def __init__(
         self,
-        request: Callable[..., Awaitable[ClientResponse]],  # Request operation, like POST or GET
+        request: Callable[..., Any],  # Request operation, like POST or GET
         url: str,  # Just url
         logger: _Logger,
         retry_options: RetryOptionsBase,
@@ -123,50 +127,43 @@ class _RequestContext:
         self._kwargs = kwargs
         self._trace_request_ctx = kwargs.pop('trace_request_ctx', {})
 
+        self._current_attempt = 0
         self._response: Optional[ClientResponse] = None
-
-    def _check_exception(self, exc: Exception) -> bool:
-        return any(isinstance(exc, cls) for cls in self._retry_options.exceptions)
 
     def _check_code(self, code: int) -> bool:
         return 500 <= code <= 599 or code in self._retry_options.statuses
 
     async def _do_request(self) -> ClientResponse:
-        response: Optional[ClientResponse] = None
-        error: Optional[Exception] = None
-        timeouts = self._retry_options.timeouts()
-        attempts = next(timeouts)
-        for attempt in itertools.count(1):
-            self._logger.debug("Attempt {} out of {}".format(attempt, attempts))
-            if response is not None:
-                response.close()
-                response = None
-            try:
-                response = await self._request(
-                    self._url,
-                    **self._kwargs,
-                    trace_request_ctx={
-                        'current_attempt': self._current_attempt,
-                        **self._trace_request_ctx,
-                    },
-                )
-            except Exception as exc:
-                if not self._check_exception(exc):
-                    raise
-                error = exc
-            else:
-                if not self._check_code(response.status):
-                    return response
-            try:
-                retry_wait = timeouts.send((response, error))
-            except StopIteration:
-                break
-            await asyncio.sleep(retry_wait)
-        if response is not None:
+        try:
+            self._current_attempt += 1
+            self._logger.debug("Attempt {} out of {}".format(self._current_attempt, self._retry_options.attempts))
+
+            response: ClientResponse = await self._request(
+                self._url,
+                **self._kwargs,
+                trace_request_ctx={
+                    'current_attempt': self._current_attempt,
+                    **self._trace_request_ctx,
+                },
+            )
+            code = response.status
+
+            if self._current_attempt < self._retry_options.attempts and self._check_code(code):
+                retry_wait = self._retry_options.get_timeout(self._current_attempt)
+                await asyncio.sleep(retry_wait)
+                return await self._do_request()
             self._response = response
             return response
-        assert error is not None
-        raise error
+
+        except Exception as e:
+            retry_wait = self._retry_options.get_timeout(self._current_attempt)
+            if self._current_attempt < self._retry_options.attempts:
+                for exc in self._retry_options.exceptions:
+                    if isinstance(e, exc):
+                        await asyncio.sleep(retry_wait)
+                        return await self._do_request()
+
+            raise e
 
     def __await__(self) -> Generator[Any, None, ClientResponse]:
         return self.__aenter__().__await__()
@@ -184,7 +181,7 @@ class RetryClient:
     def __init__(
         self,
         logger: Optional[_Logger] = None,
-        retry_options: Optional[RetryOptionsBase] = None,
+        retry_options: RetryOptions = RetryOptions(),
         *args: Any, **kwargs: Any
     ) -> None:
         self._client = ClientSession(*args, **kwargs)
@@ -192,11 +189,9 @@ class RetryClient:
 
         if logger is None:
             logger = logging.getLogger("aiohttp_retry")
-        if retry_options is None:
-            retry_options = RetryOptions()
 
         self._logger: _Logger = logger
-        self._retry_options: RetryOptionsBase = retry_options
+        self._retry_options: RetryOptions = retry_options
 
     def __del__(self) -> None:
         if not self._closed:
@@ -204,35 +199,35 @@ class RetryClient:
 
     def _request(
         self,
-        request: Callable[..., Awaitable[ClientResponse]],
+        request: Callable[..., Any],
         url: str,
         logger: _Logger,
-        retry_options: Optional[RetryOptionsBase] = None,
+        retry_options: Optional[RetryOptions] = None,
         **kwargs: Any
     ) -> _RequestContext:
         if retry_options is None:
             retry_options = self._retry_options
         return _RequestContext(request, url, logger, retry_options, **kwargs)
 
-    def get(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def get(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.get, url, self._logger, retry_options, **kwargs)
 
-    def options(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def options(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.options, url, self._logger, retry_options, **kwargs)
 
-    def head(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def head(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.head, url, self._logger, retry_options, **kwargs)
 
-    def post(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def post(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.post, url, self._logger, retry_options, **kwargs)
 
-    def put(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def put(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.put, url, self._logger, retry_options, **kwargs)
 
-    def patch(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def patch(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.patch, url, self._logger, retry_options, **kwargs)
 
-    def delete(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def delete(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.delete, url, self._logger, retry_options, **kwargs)
 
     async def close(self) -> None:

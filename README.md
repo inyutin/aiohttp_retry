@@ -11,10 +11,10 @@ You still can use [v1.2](https://github.com/inyutin/aiohttp_retry/tree/v1.2) (pi
 
 ### Examples of usage:
 ```python
-from aiohttp_retry import RetryClient, RetryOptions
+from aiohttp_retry import RetryClient, ExponentialRetry
 
 async def main():
-    retry_options = RetryOptions(attempts=1)
+    retry_options = ExponentialRetry(attempts=1)
     retry_client = RetryClient(raise_for_status=False, retry_options=retry_options)
     async with retry_client.get('https://ya.ru') as response:
         print(response.status)
@@ -22,10 +22,10 @@ async def main():
     await retry_client.close()
 ```
 ```python
-from aiohttp_retry import RetryClient, RetryOptions
+from aiohttp_retry import RetryClient, RandomRetry
 
 async def main():
-    retry_options = RetryOptions(attempts=1)
+    retry_options = RandomRetry(attempts=1)
     retry_client = RetryClient(raise_for_status=False, retry_options=retry_options)
 
     response = await retry_client.get('/ping')
@@ -51,13 +51,13 @@ from types import SimpleNamespace
 
 from aiohttp import ClientSession, TraceConfig, TraceRequestStartParams
 
-from aiohttp_retry import RetryClient, RetryOptions
+from aiohttp_retry import RetryClient, ExponentialRetry
 
 
 handler = logging.StreamHandler(sys.stdout)
 logging.basicConfig(handlers=[handler])
 logger = logging.getLogger(__name__)
-retry_options = RetryOptions(attempts=2)
+retry_options = ExponentialRetry(attempts=2)
 
 
 async def on_request_start(

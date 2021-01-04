@@ -37,11 +37,11 @@ class RetryOptionsBase:
         self.attempts: int = attempts
         if statuses is None:
             statuses = set()
-        self.statuses: Set[int] = statuses
+        self.statuses: Iterable[int] = statuses
 
         if exceptions is None:
             exceptions = set()
-        self.exceptions: Set[Type[Exception]] = exceptions
+        self.exceptions: Iterable[Type[Exception]] = exceptions
 
     @abc.abstractmethod
     def get_timeout(self, attempt: int) -> float:
@@ -70,7 +70,7 @@ class ExponentialRetry(RetryOptionsBase):
         return min(timeout, self._max_timeout)
 
 
-def RetryOptions(*args, **kwargs) -> ExponentialRetry:
+def RetryOptions(*args: Any, **kwargs: Any) -> ExponentialRetry:
     warn("RetryOptions is deprecated, use ExponentialRetry")
     return ExponentialRetry(*args, **kwargs)
 
@@ -181,7 +181,7 @@ class RetryClient:
     def __init__(
         self,
         logger: Optional[_Logger] = None,
-        retry_options: RetryOptions = RetryOptions(),
+        retry_options: RetryOptionsBase = RetryOptions(),
         *args: Any, **kwargs: Any
     ) -> None:
         self._client = ClientSession(*args, **kwargs)
@@ -191,7 +191,7 @@ class RetryClient:
             logger = logging.getLogger("aiohttp_retry")
 
         self._logger: _Logger = logger
-        self._retry_options: RetryOptions = retry_options
+        self._retry_options: RetryOptionsBase = retry_options
 
     def __del__(self) -> None:
         if not self._closed:
@@ -202,32 +202,32 @@ class RetryClient:
         request: Callable[..., Any],
         url: str,
         logger: _Logger,
-        retry_options: Optional[RetryOptions] = None,
+        retry_options: Optional[RetryOptionsBase] = None,
         **kwargs: Any
     ) -> _RequestContext:
         if retry_options is None:
             retry_options = self._retry_options
         return _RequestContext(request, url, logger, retry_options, **kwargs)
 
-    def get(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
+    def get(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.get, url, self._logger, retry_options, **kwargs)
 
-    def options(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
+    def options(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.options, url, self._logger, retry_options, **kwargs)
 
-    def head(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
+    def head(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.head, url, self._logger, retry_options, **kwargs)
 
-    def post(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
+    def post(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.post, url, self._logger, retry_options, **kwargs)
 
-    def put(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
+    def put(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.put, url, self._logger, retry_options, **kwargs)
 
-    def patch(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
+    def patch(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.patch, url, self._logger, retry_options, **kwargs)
 
-    def delete(self, url: str, retry_options: Optional[RetryOptions] = None, **kwargs: Any) -> _RequestContext:
+    def delete(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.delete, url, self._logger, retry_options, **kwargs)
 
     async def close(self) -> None:

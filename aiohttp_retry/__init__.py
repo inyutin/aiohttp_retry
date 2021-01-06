@@ -181,7 +181,7 @@ class RetryClient:
     def __init__(
         self,
         logger: Optional[_Logger] = None,
-        retry_options: RetryOptionsBase = RetryOptions(),
+        retry_options: RetryOptionsBase = ExponentialRetry(),
         *args: Any, **kwargs: Any
     ) -> None:
         self._client = ClientSession(*args, **kwargs)

@@ -4,11 +4,11 @@ codecov:
 coverage:
   precision: 2
   round: down
-  range: "70...100"
+  range: "95...100"
   status:
     project:
       default:
-        threshold: 90%
+        threshold: 95%
 
 parsers:
   gcov:

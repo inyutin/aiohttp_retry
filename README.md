@@ -1,5 +1,7 @@
 # Simple aiohttp retry client
 
+[![codecov](https://codecov.io/gh/inyutin/aiohttp_retry/branch/master/graph/badge.svg?token=ZWGAXSF1SP)](https://codecov.io/gh/inyutin/aiohttp_retry)
+
 Python 3.6 or higher.
 
 **Install**: `pip install aiohttp-retry`.

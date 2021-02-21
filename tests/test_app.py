@@ -6,7 +6,7 @@ from aiohttp import ClientSession
 from aiohttp import TraceConfig
 from aiohttp import TraceRequestStartParams
 
-from aiohttp_retry import RetryClient, ExponentialRetry, ExponentialRetry, RandomRetry, ListRetry
+from aiohttp_retry import RetryClient, ExponentialRetry, RandomRetry, ListRetry
 from tests.app import App
 
 
@@ -214,3 +214,23 @@ def test_retry_timeout_list():
     retry = ListRetry(expected)
     timeouts = [retry.get_timeout(x) for x in range(10)]
     assert timeouts == expected
+
+
+async def test_change_urls_in_request(aiohttp_client, loop):
+    test_app = App()
+    app = test_app.get_app()
+
+    client = await aiohttp_client(app)
+    retry_client = RetryClient()
+    retry_client._client = client
+
+    async with retry_client.get(url=['/internal_error', '/ping']) as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 2
+
+    await retry_client.close()
+    await client.close()
+

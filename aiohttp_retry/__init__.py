@@ -7,7 +7,7 @@ from abc import abstractmethod
 from warnings import warn
 
 from aiohttp import ClientSession, ClientResponse
-from typing import Any, Callable, Generator, Optional, Set, Type, Iterable, List
+from typing import Any, Callable, Generator, Optional, Set, Type, Iterable, List, Union
 
 if sys.version_info >= (3, 8):
     from typing import Protocol
@@ -25,6 +25,9 @@ class _Logger(Protocol):
 
     @abstractmethod
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None: pass
+
+
+_URL_TYPE = Union[str, List[str]]  # url itself or list of urls for changing between retries
 
 
 class RetryOptionsBase:
@@ -115,13 +118,13 @@ class _RequestContext:
     def __init__(
         self,
         request: Callable[..., Any],  # Request operation, like POST or GET
-        url: str,  # Just url
+        urls: List[str],  # Just url
         logger: _Logger,
         retry_options: RetryOptionsBase,
         **kwargs: Any
     ) -> None:
         self._request = request
-        self._url = url
+        self._urls = urls
         self._logger = logger
         self._retry_options = retry_options
         self._kwargs = kwargs
@@ -139,7 +142,7 @@ class _RequestContext:
             self._logger.debug("Attempt {} out of {}".format(self._current_attempt, self._retry_options.attempts))
 
             response: ClientResponse = await self._request(
-                self._url,
+                self._urls[self._current_attempt - 1],
                 **self._kwargs,
                 trace_request_ctx={
                     'current_attempt': self._current_attempt,
@@ -200,34 +203,45 @@ class RetryClient:
     def _request(
         self,
         request: Callable[..., Any],
-        url: str,
+        url: _URL_TYPE,
         logger: _Logger,
         retry_options: Optional[RetryOptionsBase] = None,
         **kwargs: Any
     ) -> _RequestContext:
         if retry_options is None:
             retry_options = self._retry_options
-        return _RequestContext(request, url, logger, retry_options, **kwargs)
+        if isinstance(url, str):
+            urls = [url] * retry_options.attempts
+        elif not isinstance(url, list) or len(url) == 0:
+            raise ValueError("you can pass url by str or list with attempts count size")
+        elif len(url) < retry_options.attempts:
+            urls = url.copy()
+            last_request_urls = [url[-1]] * (retry_options.attempts - len(url))
+            urls.extend(last_request_urls)
+        else:
+            urls = url
 
-    def get(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+        return _RequestContext(request, urls, logger, retry_options, **kwargs)
+
+    def get(self, url: _URL_TYPE, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.get, url, self._logger, retry_options, **kwargs)
 
-    def options(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def options(self, url: _URL_TYPE, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.options, url, self._logger, retry_options, **kwargs)
 
-    def head(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def head(self, url: _URL_TYPE, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.head, url, self._logger, retry_options, **kwargs)
 
-    def post(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def post(self, url: _URL_TYPE, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.post, url, self._logger, retry_options, **kwargs)
 
-    def put(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def put(self, url: _URL_TYPE, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.put, url, self._logger, retry_options, **kwargs)
 
-    def patch(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def patch(self, url: _URL_TYPE, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.patch, url, self._logger, retry_options, **kwargs)
 
-    def delete(self, url: str, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
+    def delete(self, url: _URL_TYPE, retry_options: Optional[RetryOptionsBase] = None, **kwargs: Any) -> _RequestContext:
         return self._request(self._client.delete, url, self._logger, retry_options, **kwargs)
 
     async def close(self) -> None:

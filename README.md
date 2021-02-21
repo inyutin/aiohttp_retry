@@ -7,7 +7,7 @@ Python 3.6 or higher.
 **Install**: `pip install aiohttp-retry`.
 
 ### Warning
-This current version is 2.0. It hasn't backward compatibility for previous versions. \
+This current version is 2.0+. It hasn't backward compatibility for previous versions. \
 You still can use [v1.2](https://github.com/inyutin/aiohttp_retry/tree/v1.2) (pip install aiohttp-retry==1.2), but it is unsupported.
 
 
@@ -123,4 +123,22 @@ You can define your own timeouts logic or use:
 
 #### Request Trace Context
 `RetryClient` add *current attempt number* to `request_trace_ctx` (see examples, 
-for more info see [aiohttp doc](https://docs.aiohttp.org/en/stable/client_advanced.html#aiohttp-client-tracing)) 
+for more info see [aiohttp doc](https://docs.aiohttp.org/en/stable/client_advanced.html#aiohttp-client-tracing)).
+
+### Change URL between retries
+You can change URL between retries by specifying ```url``` as list of urls. Example:
+```python
+from aiohttp_retry import RetryClient
+
+retry_client = RetryClient()
+async with retry_client.get(url=['/internal_error', '/ping']) as response:
+    text = await response.text()
+    assert response.status == 200
+    assert text == 'Ok!'
+
+await retry_client.close()
+```
+
+In this example we request ```/interval_error```, fail and then successfully request ```/ping```.
+If you specify less urls than ```attempts``` number in ```RetryOptions```, ```RetryClient``` will request last url at last attempts.
+This means that in example above we would request ```/ping``` once again in case of failure.

@@ -205,3 +205,20 @@ async def test_pass_bad_urls(aiohttp_client, loop, url):
             pass
 
     await retry_client.close()
+
+
+@pytest.mark.parametrize("url, method", [
+    ("/options_handler", 'options'),
+    ("/head_handler", 'head'),
+    ("/post_handler", 'post'),
+    ("/put_handler", 'put'),
+    ("/patch_handler", 'patch'),
+    ("/delete_handler", 'delete'),
+])
+async def test_hello(aiohttp_client, loop, url, method):
+    retry_client, _ = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    method_func = getattr(retry_client, method)
+    async with method_func(url) as response:
+        assert response.method.lower() == method
+
+    await retry_client.close()

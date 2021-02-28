@@ -11,6 +11,13 @@ class App:
         app.router.add_get('/not_found_error', self.not_found_error_handler)
         app.router.add_get('/sometimes_error', self.sometimes_error)
 
+        app.router.add_options('/options_handler', self.ping_handler)
+        app.router.add_head('/head_handler', self.ping_handler)
+        app.router.add_post('/post_handler', self.ping_handler)
+        app.router.add_put('/put_handler', self.ping_handler)
+        app.router.add_patch('/patch_handler', self.ping_handler)
+        app.router.add_delete('/delete_handler', self.ping_handler)
+
         self._web_app = app
 
     async def ping_handler(self, _: web.Request) -> web.Response:

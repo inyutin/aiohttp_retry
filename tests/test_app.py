@@ -12,12 +12,16 @@ from aiohttp_retry import RetryClient, ExponentialRetry, RandomRetry, ListRetry
 from tests.app import App
 
 
-async def get_retry_client_and_test_app_for_test(aiohttp_client, *args, **kwargs) -> Tuple[RetryClient, App]:
+async def get_retry_client_and_test_app_for_test(
+    aiohttp_client,
+    raise_for_status: bool = False,
+    *args, **kwargs
+) -> Tuple[RetryClient, App]:
     test_app = App()
     app = test_app.web_app()
 
     retry_client = RetryClient(*args, **kwargs)
-    retry_client._client = await aiohttp_client(app)
+    retry_client._client = await aiohttp_client(app, raise_for_status=raise_for_status)
 
     return retry_client, test_app
 

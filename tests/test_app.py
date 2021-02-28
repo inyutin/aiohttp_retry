@@ -222,3 +222,30 @@ async def test_hello(aiohttp_client, loop, url, method):
         assert response.method.lower() == method
 
     await retry_client.close()
+
+
+async def test_not_found_error_with_retry_client_raise_for_status(aiohttp_client, loop):
+    test_app = App()
+    app = test_app.web_app
+
+    client = await aiohttp_client(app)
+    retry_client = RetryClient(raise_for_status=True)
+    retry_client._client = client
+
+    retry_options = ExponentialRetry(attempts=5, statuses={404})
+    override_response = retry_client.get('/not_found_error', retry_options, raise_for_status=False)
+    assert not override_response._raise_for_status
+    response = retry_client.get('/not_found_error', retry_options)
+    assert response._raise_for_status
+
+    try:
+        async with response:
+            pass
+    except ClientResponseError as exc:
+        assert exc.status == 404
+        assert test_app.counter == 5
+    else:
+        raise AssertionError('Expected ClientResponseError not raised')
+
+    await retry_client.close()
+    await client.close()

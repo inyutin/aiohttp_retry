@@ -82,7 +82,7 @@ async def test_sometimes_error(aiohttp_client, loop):
 
 
 async def test_sometimes_error_with_raise_for_status(aiohttp_client, loop):
-    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client, raise_for_status=True)
     retry_options = ExponentialRetry(attempts=5, exceptions={ClientResponseError})
     async with retry_client.get('/sometimes_error', retry_options) \
             as response:

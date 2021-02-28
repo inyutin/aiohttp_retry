@@ -25,3 +25,4 @@ comment:
 
 ignore:
   - "setup.py"
+  - "tests/*.py"

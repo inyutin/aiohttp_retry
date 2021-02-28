@@ -1,8 +1,11 @@
-name: Publish Python package to PyPI
+name: Publish package to PyPI
 
 on:
   push:
     branches: [master]
+  release:
+    types: [ released ]
+
 
 jobs:
   build-n-publish:

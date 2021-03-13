@@ -374,5 +374,6 @@ class RetryClient:
             urls = url.copy()
             last_request_urls = [url[-1]] * (attempts - len(url))
             urls.extend(last_request_urls)
+            return urls
 
         return url

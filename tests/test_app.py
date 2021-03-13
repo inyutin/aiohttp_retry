@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from typing import Tuple
 
 import pytest
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, hdrs
 from aiohttp import ClientSession
 from aiohttp import TraceConfig
 from aiohttp import TraceRequestStartParams
@@ -29,6 +29,18 @@ async def get_retry_client_and_test_app_for_test(
 async def test_hello(aiohttp_client, loop):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     async with retry_client.get('/ping') as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 1
+
+    await retry_client.close()
+
+
+async def test_hello_by_request(aiohttp_client, loop):
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    async with retry_client.request(method=hdrs.METH_GET, url='/ping') as response:
         text = await response.text()
         assert response.status == 200
         assert text == 'Ok!'
@@ -249,3 +261,15 @@ async def test_not_found_error_with_retry_client_raise_for_status(aiohttp_client
 
     await retry_client.close()
     await client.close()
+
+
+async def test_request(aiohttp_client, loop):
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    async with retry_client.request(hdrs.METH_GET, '/ping') as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 1
+
+    await retry_client.close()

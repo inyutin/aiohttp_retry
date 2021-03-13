@@ -7,8 +7,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='aiohttp_retry',
-    version='2.3.3',
-    description='Simple retry cient for aiohttp',
+    version='2.3.4',
+    description='Simple retry client for aiohttp',
     long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers=[

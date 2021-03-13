@@ -6,8 +6,10 @@ import sys
 from abc import abstractmethod
 from warnings import warn
 
-from aiohttp import ClientSession, ClientResponse
+from aiohttp import ClientSession, ClientResponse, hdrs
 from typing import Any, Callable, Generator, Optional, Set, Type, Iterable, List, Union
+
+from aiohttp.typedefs import StrOrURL
 
 if sys.version_info >= (3, 8):
     from typing import Protocol
@@ -27,7 +29,7 @@ class _Logger(Protocol):
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None: pass
 
 
-_URL_TYPE = Union[str, List[str]]  # url itself or list of urls for changing between retries
+_URL_TYPE = Union[StrOrURL, List[StrOrURL]]  # url itself or list of urls for changing between retries
 
 
 class RetryOptionsBase:
@@ -118,13 +120,15 @@ class _RequestContext:
     def __init__(
         self,
         request: Callable[..., Any],  # Request operation, like POST or GET
-        urls: List[str],  # Just url
+        method: str,
+        urls: List[StrOrURL],
         logger: _Logger,
         retry_options: RetryOptionsBase,
         raise_for_status: bool = False,
         **kwargs: Any
     ) -> None:
         self._request = request
+        self._method = method
         self._urls = urls
         self._logger = logger
         self._retry_options = retry_options
@@ -144,6 +148,7 @@ class _RequestContext:
             self._logger.debug("Attempt {} out of {}".format(self._current_attempt, self._retry_options.attempts))
 
             response: ClientResponse = await self._request(
+                self._method,
                 self._urls[self._current_attempt - 1],
                 **self._kwargs,
                 trace_request_ctx={
@@ -208,9 +213,8 @@ class RetryClient:
 
     def _request(
         self,
-        request: Callable[..., Any],
+        method: str,
         url: _URL_TYPE,
-        logger: _Logger,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
@@ -230,54 +234,120 @@ class RetryClient:
 
         if raise_for_status is None:
             raise_for_status = self._raise_for_status
-        return _RequestContext(request, urls, logger, retry_options, raise_for_status, **kwargs)
+        return _RequestContext(
+            request=self._client.request,
+            method=method,
+            urls=urls,
+            logger=self._logger,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
+
+    def request(
+        self,
+        method: str,
+        url: StrOrURL,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
+    ) -> _RequestContext:
+        return self._request(
+            method=method,
+            url=url,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
 
     def get(
-        self, url: _URL_TYPE,
+        self,
+        url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(self._client.get, url, self._logger, retry_options, raise_for_status, **kwargs)
+        return self._request(
+            method=hdrs.METH_GET,
+            url=url,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
 
     def options(
-        self, url: _URL_TYPE,
+        self,
+        url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(self._client.options, url, self._logger, retry_options, raise_for_status, **kwargs)
+        return self._request(
+            method=hdrs.METH_OPTIONS,
+            url=url,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
 
     def head(
-        self, url: _URL_TYPE,
+        self,
+        url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None, **kwargs: Any
     ) -> _RequestContext:
-        return self._request(self._client.head, url, self._logger, retry_options, raise_for_status, **kwargs)
+        return self._request(
+            method=hdrs.METH_HEAD,
+            url=url,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
 
     def post(
-        self, url: _URL_TYPE,
+        self,
+        url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(self._client.post, url, self._logger, retry_options, raise_for_status, **kwargs)
+        return self._request(
+            method=hdrs.METH_POST,
+            url=url,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
 
     def put(
-        self, url: _URL_TYPE,
+        self,
+        url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(self._client.put, url, self._logger, retry_options, raise_for_status, **kwargs)
+        return self._request(
+            method=hdrs.METH_PUT,
+            url=url,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
 
     def patch(
-        self, url: _URL_TYPE,
+        self,
+        url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(self._client.patch, url, self._logger, retry_options, raise_for_status, **kwargs)
+        return self._request(
+            method=hdrs.METH_PATCH,
+            url=url,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
 
     def delete(
         self,
@@ -286,7 +356,13 @@ class RetryClient:
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(self._client.delete, url, self._logger, retry_options, raise_for_status, **kwargs)
+        return self._request(
+            method=hdrs.METH_DELETE,
+            url=url,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs
+        )
 
     async def close(self) -> None:
         await self._client.close()

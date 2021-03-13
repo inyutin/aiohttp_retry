@@ -221,23 +221,12 @@ class RetryClient:
     ) -> _RequestContext:
         if retry_options is None:
             retry_options = self._retry_options
-        if isinstance(url, str):
-            urls = [url] * retry_options.attempts
-        elif not isinstance(url, list) or len(url) == 0:
-            raise ValueError("you can pass url by str or list with attempts count size")
-        elif len(url) < retry_options.attempts:
-            urls = url.copy()
-            last_request_urls = [url[-1]] * (retry_options.attempts - len(url))
-            urls.extend(last_request_urls)
-        else:
-            urls = url
-
         if raise_for_status is None:
             raise_for_status = self._raise_for_status
         return _RequestContext(
             request=self._client.request,
             method=method,
-            urls=urls,
+            urls=self._url_to_urls(url, retry_options.attempts),
             logger=self._logger,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
@@ -373,3 +362,17 @@ class RetryClient:
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
+
+    def _url_to_urls(self, url: _URL_TYPE, attempts: int) -> List[StrOrURL]:
+        if isinstance(url, str):
+            return [url] * attempts
+
+        if not isinstance(url, list) or len(url) == 0:
+            raise ValueError("you can pass url by str or list with attempts count size")
+
+        if len(url) < attempts:
+            urls = url.copy()
+            last_request_urls = [url[-1]] * (attempts - len(url))
+            urls.extend(last_request_urls)
+
+        return url

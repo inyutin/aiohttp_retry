@@ -209,6 +209,22 @@ async def test_change_urls_in_request(aiohttp_client, loop, attempts):
     await retry_client.close()
 
 
+@pytest.mark.parametrize("attempts", [2, 3])
+async def test_change_urls_as_tuple_in_request(aiohttp_client, loop, attempts):
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(
+        aiohttp_client,
+        retry_options=ExponentialRetry(attempts=attempts)
+    )
+    async with retry_client.get(url=('/internal_error', '/ping')) as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 2
+
+    await retry_client.close()
+
+
 @pytest.mark.parametrize("url", [{"/ping", "/internal_error"}, []])
 async def test_pass_bad_urls(aiohttp_client, loop, url):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)

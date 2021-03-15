@@ -4,10 +4,11 @@ import logging
 import random
 import sys
 from abc import abstractmethod
+from copy import deepcopy
 from warnings import warn
 
 from aiohttp import ClientSession, ClientResponse, hdrs
-from typing import Any, Callable, Generator, Optional, Set, Type, Iterable, List, Union
+from typing import Any, Callable, Generator, Optional, Set, Type, Iterable, List, Union, Tuple
 
 from aiohttp.typedefs import StrOrURL
 
@@ -29,7 +30,8 @@ class _Logger(Protocol):
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None: pass
 
 
-_URL_TYPE = Union[StrOrURL, List[StrOrURL]]  # url itself or list of urls for changing between retries
+# url itself or list of urls for changing between retries
+_URL_TYPE = Union[StrOrURL, List[StrOrURL], Tuple[StrOrURL, ...]]
 
 
 class RetryOptionsBase:
@@ -367,13 +369,13 @@ class RetryClient:
         if isinstance(url, str):
             return [url] * attempts
 
-        if not isinstance(url, list) or len(url) == 0:
-            raise ValueError("you can pass url by str or list with attempts count size")
+        if (not isinstance(url, list) and not isinstance(url, tuple)) or len(url) == 0:
+            raise ValueError("you can pass url by str or list/tuple with attempts count size")
 
         if len(url) < attempts:
-            urls = url.copy()
+            urls = deepcopy(list(url))
             last_request_urls = [url[-1]] * (attempts - len(url))
             urls.extend(last_request_urls)
             return urls
 
-        return url
+        return list(url)

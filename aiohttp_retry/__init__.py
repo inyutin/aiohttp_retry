@@ -4,7 +4,6 @@ import logging
 import random
 import sys
 from abc import abstractmethod
-from copy import deepcopy
 from warnings import warn
 
 from aiohttp import ClientSession, ClientResponse, hdrs
@@ -123,7 +122,7 @@ class _RequestContext:
         self,
         request: Callable[..., Any],  # Request operation, like POST or GET
         method: str,
-        urls: List[StrOrURL],
+        urls: Tuple[StrOrURL, ...],
         logger: _Logger,
         retry_options: RetryOptionsBase,
         raise_for_status: bool = False,
@@ -191,6 +190,26 @@ class _RequestContext:
                 self._response.close()
 
 
+def _url_to_urls(url: _URL_TYPE, attempts: int) -> Tuple[StrOrURL, ...]:
+    if isinstance(url, str):
+        return (url,) * attempts
+
+    if isinstance(url, list):
+        urls = tuple(url)
+    elif isinstance(url, tuple):
+        urls = url
+    else:
+        raise ValueError("you can pass url only by str or list/tuple")
+
+    if len(urls) == 0:
+        raise ValueError("you can pass url by str or list/tuple with attempts count size")
+
+    if len(urls) < attempts:
+        return urls + (urls[-1],) * (attempts - len(url))
+
+    return urls
+
+
 class RetryClient:
     def __init__(
         self,
@@ -228,7 +247,7 @@ class RetryClient:
         return _RequestContext(
             request=self._client.request,
             method=method,
-            urls=self._url_to_urls(url, retry_options.attempts),
+            urls=_url_to_urls(url, retry_options.attempts),
             logger=self._logger,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
@@ -364,18 +383,3 @@ class RetryClient:
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.close()
-
-    def _url_to_urls(self, url: _URL_TYPE, attempts: int) -> List[StrOrURL]:
-        if isinstance(url, str):
-            return [url] * attempts
-
-        if (not isinstance(url, list) and not isinstance(url, tuple)) or len(url) == 0:
-            raise ValueError("you can pass url by str or list/tuple with attempts count size")
-
-        if len(url) < attempts:
-            urls = deepcopy(list(url))
-            last_request_urls = [url[-1]] * (attempts - len(url))
-            urls.extend(last_request_urls)
-            return urls
-
-        return list(url)

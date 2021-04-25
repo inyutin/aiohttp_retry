@@ -137,6 +137,8 @@ class _RequestContext:
         self._trace_request_ctx = kwargs.pop('trace_request_ctx', {})
         self._raise_for_status = raise_for_status
 
+        self._response: Optional[ClientResponse] = None
+
     def _is_status_code_ok(self, code: int) -> bool:
         return code not in self._retry_options.statuses and code < 500
 
@@ -170,6 +172,7 @@ class _RequestContext:
             if self._is_status_code_ok(response.status) or current_attempt == self._retry_options.attempts:
                 if self._raise_for_status:
                     response.raise_for_status()
+                self._response = response
                 return response
 
     def __await__(self) -> Generator[Any, None, ClientResponse]:
@@ -179,7 +182,9 @@ class _RequestContext:
         return await self._do_request()
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        pass
+        if self._response is not None:
+            if not self._response.closed:
+                self._response.close()
 
 
 def _url_to_urls(url: _URL_TYPE, attempts: int) -> Tuple[StrOrURL, ...]:

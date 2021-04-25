@@ -35,10 +35,10 @@ _URL_TYPE = Union[StrOrURL, List[StrOrURL], Tuple[StrOrURL, ...]]
 
 class RetryOptionsBase:
     def __init__(
-            self,
-            attempts: int = 3,  # How many times we should retry
-            statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
-            exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+        self,
+        attempts: int = 3,  # How many times we should retry
+        statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
+        exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
     ):
         self.attempts: int = attempts
         if statuses is None:
@@ -56,13 +56,13 @@ class RetryOptionsBase:
 
 class ExponentialRetry(RetryOptionsBase):
     def __init__(
-            self,
-            attempts: int = 3,  # How many times we should retry
-            start_timeout: float = 0.1,  # Base timeout time, then it exponentially grow
-            max_timeout: float = 30.0,  # Max possible timeout between tries
-            factor: float = 2.0,  # How much we increase timeout each time
-            statuses: Optional[Set[int]] = None,  # On which statuses we should retry
-            exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
+        self,
+        attempts: int = 3,  # How many times we should retry
+        start_timeout: float = 0.1,  # Base timeout time, then it exponentially grow
+        max_timeout: float = 30.0,  # Max possible timeout between tries
+        factor: float = 2.0,  # How much we increase timeout each time
+        statuses: Optional[Set[int]] = None,  # On which statuses we should retry
+        exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
     ):
         super().__init__(attempts, statuses, exceptions)
 
@@ -83,13 +83,13 @@ def RetryOptions(*args: Any, **kwargs: Any) -> ExponentialRetry:
 
 class RandomRetry(RetryOptionsBase):
     def __init__(
-            self,
-            attempts: int = 3,  # How many times we should retry
-            statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
-            exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
-            min_timeout: float = 0.1,  # Minimum possible timeout
-            max_timeout: float = 3.0,  # Maximum possible timeout between tries
-            random_func: Callable[[], float] = random.random,  # Random number generator
+        self,
+        attempts: int = 3,  # How many times we should retry
+        statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
+        exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+        min_timeout: float = 0.1,  # Minimum possible timeout
+        max_timeout: float = 3.0,  # Maximum possible timeout between tries
+        random_func: Callable[[], float] = random.random,  # Random number generator
     ):
         super().__init__(attempts, statuses, exceptions)
         self.attempts: int = attempts
@@ -104,10 +104,10 @@ class RandomRetry(RetryOptionsBase):
 
 class ListRetry(RetryOptionsBase):
     def __init__(
-            self,
-            timeouts: List[float],
-            statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
-            exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+        self,
+        timeouts: List[float],
+        statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
+        exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
     ):
         self.timeouts = timeouts
         super().__init__(len(timeouts), statuses, exceptions)
@@ -119,14 +119,14 @@ class ListRetry(RetryOptionsBase):
 
 class _RequestContext:
     def __init__(
-            self,
-            request: Callable[..., Any],  # Request operation, like POST or GET
-            method: str,
-            urls: Tuple[StrOrURL, ...],
-            logger: _Logger,
-            retry_options: RetryOptionsBase,
-            raise_for_status: bool = False,
-            **kwargs: Any
+        self,
+        request: Callable[..., Any],  # Request operation, like POST or GET
+        method: str,
+        urls: Tuple[StrOrURL, ...],
+        logger: _Logger,
+        retry_options: RetryOptionsBase,
+        raise_for_status: bool = False,
+        **kwargs: Any
     ) -> None:
         self._request = request
         self._method = method
@@ -204,11 +204,11 @@ def _url_to_urls(url: _URL_TYPE, attempts: int) -> Tuple[StrOrURL, ...]:
 
 class RetryClient:
     def __init__(
-            self,
-            logger: Optional[_Logger] = None,
-            retry_options: RetryOptionsBase = ExponentialRetry(),
-            raise_for_status: bool = False,
-            *args: Any, **kwargs: Any
+        self,
+        logger: Optional[_Logger] = None,
+        retry_options: RetryOptionsBase = ExponentialRetry(),
+        raise_for_status: bool = False,
+        *args: Any, **kwargs: Any
     ) -> None:
         self._client = ClientSession(*args, **kwargs)
         self._closed = False
@@ -225,12 +225,12 @@ class RetryClient:
             self._logger.warning("Aiohttp retry client was not closed")
 
     def _request(
-            self,
-            method: str,
-            url: _URL_TYPE,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None,
-            **kwargs: Any
+        self,
+        method: str,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
     ) -> _RequestContext:
         if retry_options is None:
             retry_options = self._retry_options
@@ -247,12 +247,12 @@ class RetryClient:
         )
 
     def request(
-            self,
-            method: str,
-            url: StrOrURL,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None,
-            **kwargs: Any
+        self,
+        method: str,
+        url: StrOrURL,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
     ) -> _RequestContext:
         return self._request(
             method=method,
@@ -263,11 +263,11 @@ class RetryClient:
         )
 
     def get(
-            self,
-            url: _URL_TYPE,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None,
-            **kwargs: Any
+        self,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
     ) -> _RequestContext:
         return self._request(
             method=hdrs.METH_GET,
@@ -278,11 +278,11 @@ class RetryClient:
         )
 
     def options(
-            self,
-            url: _URL_TYPE,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None,
-            **kwargs: Any
+        self,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
     ) -> _RequestContext:
         return self._request(
             method=hdrs.METH_OPTIONS,
@@ -293,10 +293,10 @@ class RetryClient:
         )
 
     def head(
-            self,
-            url: _URL_TYPE,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None, **kwargs: Any
+        self,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None, **kwargs: Any
     ) -> _RequestContext:
         return self._request(
             method=hdrs.METH_HEAD,
@@ -307,11 +307,11 @@ class RetryClient:
         )
 
     def post(
-            self,
-            url: _URL_TYPE,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None,
-            **kwargs: Any
+        self,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
     ) -> _RequestContext:
         return self._request(
             method=hdrs.METH_POST,
@@ -322,11 +322,11 @@ class RetryClient:
         )
 
     def put(
-            self,
-            url: _URL_TYPE,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None,
-            **kwargs: Any
+        self,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
     ) -> _RequestContext:
         return self._request(
             method=hdrs.METH_PUT,
@@ -337,11 +337,11 @@ class RetryClient:
         )
 
     def patch(
-            self,
-            url: _URL_TYPE,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None,
-            **kwargs: Any
+        self,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
     ) -> _RequestContext:
         return self._request(
             method=hdrs.METH_PATCH,
@@ -352,11 +352,11 @@ class RetryClient:
         )
 
     def delete(
-            self,
-            url: _URL_TYPE,
-            retry_options: Optional[RetryOptionsBase] = None,
-            raise_for_status: Optional[bool] = None,
-            **kwargs: Any
+        self,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any
     ) -> _RequestContext:
         return self._request(
             method=hdrs.METH_DELETE,

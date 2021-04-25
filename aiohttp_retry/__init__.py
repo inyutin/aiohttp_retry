@@ -137,46 +137,43 @@ class _RequestContext:
         self._trace_request_ctx = kwargs.pop('trace_request_ctx', {})
         self._raise_for_status = raise_for_status
 
-        self._current_attempt = 0
         self._response: Optional[ClientResponse] = None
 
-    def _check_code(self, code: int) -> bool:
-        return 500 <= code <= 599 or code in self._retry_options.statuses
+    def _is_status_code_ok(self, code: int) -> bool:
+        return code not in self._retry_options.statuses and code < 500
 
     async def _do_request(self) -> ClientResponse:
-        try:
-            self._current_attempt += 1
-            self._logger.debug("Attempt {} out of {}".format(self._current_attempt, self._retry_options.attempts))
-
-            response: ClientResponse = await self._request(
-                self._method,
-                self._urls[self._current_attempt - 1],
-                **self._kwargs,
-                trace_request_ctx={
-                    'current_attempt': self._current_attempt,
-                    **self._trace_request_ctx,
-                },
-            )
-            code = response.status
-
-            if self._current_attempt < self._retry_options.attempts and self._check_code(code):
-                retry_wait = self._retry_options.get_timeout(self._current_attempt)
+        current_attempt = 0
+        while True:
+            self._logger.debug("Attempt {} out of {}".format(current_attempt, self._retry_options.attempts))
+            if current_attempt > 0:
+                retry_wait = self._retry_options.get_timeout(current_attempt)
                 await asyncio.sleep(retry_wait)
-                return await self._do_request()
-            self._response = response
-            if self._raise_for_status:
-                response.raise_for_status()
-            return response
 
-        except Exception as e:
-            retry_wait = self._retry_options.get_timeout(self._current_attempt)
-            if self._current_attempt < self._retry_options.attempts:
-                for exc in self._retry_options.exceptions:
-                    if isinstance(e, exc):
-                        await asyncio.sleep(retry_wait)
-                        return await self._do_request()
+            current_attempt += 1
+            try:
+                response: ClientResponse = await self._request(
+                    self._method,
+                    self._urls[current_attempt - 1],
+                    **self._kwargs,
+                    trace_request_ctx={
+                        'current_attempt': current_attempt,
+                        **self._trace_request_ctx,
+                    },
+                )
+            except Exception as e:
+                if current_attempt < self._retry_options.attempts:
+                    is_exc_valid = any([isinstance(e, exc) for exc in self._retry_options.exceptions])
+                    if is_exc_valid:
+                        continue
 
-            raise e
+                raise e
+
+            if self._is_status_code_ok(response.status) or current_attempt == self._retry_options.attempts:
+                if self._raise_for_status:
+                    response.raise_for_status()
+                self._response = response
+                return response
 
     def __await__(self) -> Generator[Any, None, ClientResponse]:
         return self.__aenter__().__await__()

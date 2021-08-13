@@ -10,6 +10,7 @@ from aiohttp import TraceRequestStartParams
 
 from aiohttp_retry import RetryClient, ExponentialRetry, RandomRetry, ListRetry
 from tests.app import App
+from yarl import URL
 
 
 async def get_retry_client_and_test_app_for_test(
@@ -242,7 +243,7 @@ async def test_pass_bad_urls(aiohttp_client, loop, url):
     ("/patch_handler", 'patch'),
     ("/delete_handler", 'delete'),
 ])
-async def test_hello(aiohttp_client, loop, url, method):
+async def test_methods(aiohttp_client, loop, url, method):
     retry_client, _ = await get_retry_client_and_test_app_for_test(aiohttp_client)
     method_func = getattr(retry_client, method)
     async with method_func(url) as response:
@@ -281,6 +282,19 @@ async def test_not_found_error_with_retry_client_raise_for_status(aiohttp_client
 async def test_request(aiohttp_client, loop):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     async with retry_client.request(hdrs.METH_GET, '/ping') as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 1
+
+    await retry_client.close()
+
+
+async def test_url_as_yarl(aiohttp_client, loop):
+    """https://github.com/inyutin/aiohttp_retry/issues/41"""
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    async with retry_client.get(URL('/ping')) as response:
         text = await response.text()
         assert response.status == 200
         assert text == 'Ok!'

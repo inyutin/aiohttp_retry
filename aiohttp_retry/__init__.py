@@ -4,11 +4,21 @@ import logging
 import random
 import sys
 from abc import abstractmethod
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 from warnings import warn
 
-from aiohttp import ClientSession, ClientResponse, hdrs
-from typing import Any, Callable, Generator, Optional, Set, Type, Iterable, List, Union, Tuple
-
+from aiohttp import ClientResponse, ClientSession, hdrs
 from aiohttp.typedefs import StrOrURL
 from yarl import URL as YARL_URL
 

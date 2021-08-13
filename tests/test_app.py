@@ -3,14 +3,17 @@ from types import SimpleNamespace
 from typing import Tuple
 
 import pytest
-from aiohttp import ClientResponseError, hdrs
-from aiohttp import ClientSession
-from aiohttp import TraceConfig
-from aiohttp import TraceRequestStartParams
-
-from aiohttp_retry import RetryClient, ExponentialRetry, RandomRetry, ListRetry
-from tests.app import App
+from aiohttp import (
+    ClientResponseError,
+    ClientSession,
+    TraceConfig,
+    TraceRequestStartParams,
+    hdrs,
+)
 from yarl import URL
+
+from aiohttp_retry import ExponentialRetry, ListRetry, RandomRetry, RetryClient
+from tests.app import App
 
 
 async def get_retry_client_and_test_app_for_test(

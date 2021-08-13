@@ -3,3 +3,4 @@ pytest
 pytest-aiohttp
 pytest-cov
 mypy
+yarl

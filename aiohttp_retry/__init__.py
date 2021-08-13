@@ -10,6 +10,7 @@ from aiohttp import ClientSession, ClientResponse, hdrs
 from typing import Any, Callable, Generator, Optional, Set, Type, Iterable, List, Union, Tuple
 
 from aiohttp.typedefs import StrOrURL
+from yarl import URL as YARL_URL
 
 if sys.version_info >= (3, 8):
     from typing import Protocol
@@ -30,7 +31,8 @@ class _Logger(Protocol):
 
 
 # url itself or list of urls for changing between retries
-_URL_TYPE = Union[StrOrURL, List[StrOrURL], Tuple[StrOrURL, ...]]
+_RAW_URL_TYPE = Union[StrOrURL, YARL_URL]
+_URL_TYPE = Union[_RAW_URL_TYPE, List[_RAW_URL_TYPE], Tuple[_RAW_URL_TYPE, ...]]
 
 
 class RetryOptionsBase:
@@ -188,7 +190,7 @@ class _RequestContext:
 
 
 def _url_to_urls(url: _URL_TYPE, attempts: int) -> Tuple[StrOrURL, ...]:
-    if isinstance(url, str):
+    if isinstance(url, str) or isinstance(url, YARL_URL):
         return (url,) * attempts
 
     if isinstance(url, list):

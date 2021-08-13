@@ -120,6 +120,8 @@ You can define your own timeouts logic or use:
 - ```ExponentialRetry``` with exponential backoff
 - ```RandomRetry``` for random backoff
 - ```ListRetry``` with backoff you predefine by list
+- ```FibonacciRetry``` with backoff that looks like fibonacci sequence
+- ```JitterRetry``` exponential retry with a bit of randomness
 
 #### Request Trace Context
 `RetryClient` add *current attempt number* to `request_trace_ctx` (see examples, 

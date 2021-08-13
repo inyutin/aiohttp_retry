@@ -4,3 +4,4 @@ pytest-aiohttp
 pytest-cov
 mypy
 yarl
+isort

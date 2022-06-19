@@ -6,9 +6,7 @@ Python 3.6 or higher.
 
 **Install**: `pip install aiohttp-retry`.
 
-### Warning
-This current version is 2.0+. It hasn't backward compatibility for previous versions. \
-You still can use [v1.2](https://github.com/inyutin/aiohttp_retry/tree/v1.2) (pip install aiohttp-retry==1.2), but it is unsupported.
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/inyutin)
 
 
 ### Examples of usage:

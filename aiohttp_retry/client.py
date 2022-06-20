@@ -31,6 +31,7 @@ class _Logger(Protocol):
 # url itself or list of urls for changing between retries
 _RAW_URL_TYPE = Union[StrOrURL, YARL_URL]
 _URL_TYPE = Union[_RAW_URL_TYPE, List[_RAW_URL_TYPE], Tuple[_RAW_URL_TYPE, ...]]
+_LoggerType = Union[_Logger, logging.Logger]
 
 
 class _RequestContext:
@@ -39,7 +40,7 @@ class _RequestContext:
         request: Callable[..., Any],  # Request operation, like POST or GET
         method: str,
         urls: Tuple[StrOrURL, ...],
-        logger: _Logger,
+        logger: _LoggerType,
         retry_options: RetryOptionsBase,
         raise_for_status: bool = False,
         **kwargs: Any
@@ -126,7 +127,7 @@ def _url_to_urls(url: _URL_TYPE, attempts: int) -> Tuple[StrOrURL, ...]:
 class RetryClient:
     def __init__(
         self,
-        logger: Optional[_Logger] = None,
+        logger: Optional[_LoggerType] = None,
         retry_options: RetryOptionsBase = ExponentialRetry(),
         raise_for_status: bool = False,
         *args: Any, **kwargs: Any
@@ -134,10 +135,7 @@ class RetryClient:
         self._client = ClientSession(*args, **kwargs)
         self._closed = False
 
-        if logger is None:
-            logger = logging.getLogger("aiohttp_retry")
-
-        self._logger: _Logger = logger
+        self._logger: _LoggerType = logger or logging.getLogger("aiohttp_retry")
         self._retry_options: RetryOptionsBase = retry_options
         self._raise_for_status = raise_for_status
 

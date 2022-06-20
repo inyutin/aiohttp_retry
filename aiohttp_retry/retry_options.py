@@ -139,4 +139,5 @@ class JitterRetry(ExponentialRetry):
         self._random_interval_size = random_interval_size
 
     def get_timeout(self, attempt: int) -> float:
-        return super().get_timeout(attempt) + random.uniform(0, self._random_interval_size) ** self._factor
+        timeout: float = super().get_timeout(attempt) + random.uniform(0, self._random_interval_size) ** self._factor
+        return timeout

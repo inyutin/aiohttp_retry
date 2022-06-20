@@ -140,6 +140,10 @@ class RetryClient:
         self._raise_for_status = raise_for_status
 
     def __del__(self) -> None:
+        if getattr(self, '_closed', None) is None:
+            # in case object was not initialized (__init__ raised an exception)
+            return
+
         if not self._closed:
             self._logger.warning("Aiohttp retry client was not closed")
 

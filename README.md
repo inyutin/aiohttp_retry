@@ -81,7 +81,8 @@ async def main():
     await retry_client.close()
 ```
 Look tests for more examples. \
-Be aware: last request returns as it is.
+**Be aware: last request returns as it is.**  
+**If the last request ended with exception, that this exception will be raised from RetryClient request**
 
 ### Documentation
 `RetryClient` takes the same arguments as ClientSession[[docs](https://docs.aiohttp.org/en/stable/client_reference.html)] \

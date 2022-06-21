@@ -169,6 +169,10 @@ class RetryClient:
             **kwargs
         )
 
+    @property
+    def retry_options(self) -> RetryOptionsBase:
+        return self._retry_options
+
     def request(
         self,
         method: str,

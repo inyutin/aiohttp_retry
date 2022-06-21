@@ -285,3 +285,27 @@ async def test_url_as_yarl(aiohttp_client, loop):
         assert test_app.counter == 1
 
     await retry_client.close()
+
+
+async def test_change_client_retry_options(aiohttp_client, loop):
+    retry_options = ExponentialRetry(attempts=5)
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client, retry_options=retry_options)
+
+    # first time with 5 attempts is okay
+    async with retry_client.get('/sometimes_error') as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 3
+
+    test_app.counter = 0
+    retry_client.retry_options.attempts = 2
+
+    # second time with 5 attempts is error
+    async with retry_client.get('/sometimes_error') as response:
+        text = await response.text()
+        assert response.status == 500
+        assert test_app.counter == 2
+
+    await retry_client.close()

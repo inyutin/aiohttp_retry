@@ -29,7 +29,7 @@ async def get_retry_client_and_test_app_for_test(
     return retry_client, test_app
 
 
-async def test_hello(aiohttp_client, loop):
+async def test_hello(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     async with retry_client.get('/ping') as response:
         text = await response.text()
@@ -41,7 +41,7 @@ async def test_hello(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_hello_by_request(aiohttp_client, loop):
+async def test_hello_by_request(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     async with retry_client.request(method=hdrs.METH_GET, url='/ping') as response:
         text = await response.text()
@@ -53,7 +53,7 @@ async def test_hello_by_request(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_hello_with_context(aiohttp_client, loop):
+async def test_hello_with_context(aiohttp_client):
     test_app = App()
     app = test_app.web_app()
     client = await aiohttp_client(app)
@@ -67,7 +67,7 @@ async def test_hello_with_context(aiohttp_client, loop):
             assert test_app.counter == 1
 
 
-async def test_internal_error(aiohttp_client, loop):
+async def test_internal_error(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     retry_options = ExponentialRetry(attempts=5)
     async with retry_client.get('/internal_error', retry_options) as response:
@@ -77,7 +77,7 @@ async def test_internal_error(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_not_found_error(aiohttp_client, loop):
+async def test_not_found_error(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     retry_options = ExponentialRetry(attempts=5, statuses={404})
     async with retry_client.get('/not_found_error', retry_options) as response:
@@ -87,7 +87,7 @@ async def test_not_found_error(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_sometimes_error(aiohttp_client, loop):
+async def test_sometimes_error(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     retry_options = ExponentialRetry(attempts=5)
     async with retry_client.get('/sometimes_error', retry_options) as response:
@@ -100,7 +100,7 @@ async def test_sometimes_error(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_sometimes_error_with_raise_for_status(aiohttp_client, loop):
+async def test_sometimes_error_with_raise_for_status(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client, raise_for_status=True)
     retry_options = ExponentialRetry(attempts=5, exceptions={ClientResponseError})
     async with retry_client.get('/sometimes_error', retry_options) as response:
@@ -113,7 +113,7 @@ async def test_sometimes_error_with_raise_for_status(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_override_options(aiohttp_client, loop):
+async def test_override_options(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(
         aiohttp_client,
         retry_options=ExponentialRetry(attempts=1)
@@ -129,7 +129,7 @@ async def test_override_options(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_hello_awaitable(aiohttp_client, loop):
+async def test_hello_awaitable(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     response = await retry_client.get('/ping')
     text = await response.text()
@@ -141,7 +141,7 @@ async def test_hello_awaitable(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_add_trace_request_ctx(aiohttp_client, loop):
+async def test_add_trace_request_ctx(aiohttp_client):
     actual_request_contexts = []
 
     async def on_request_start(
@@ -177,7 +177,7 @@ async def test_add_trace_request_ctx(aiohttp_client, loop):
 
 
 @pytest.mark.parametrize("attempts", [2, 3])
-async def test_change_urls_in_request(aiohttp_client, loop, attempts):
+async def test_change_urls_in_request(aiohttp_client, attempts):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(
         aiohttp_client,
         retry_options=ExponentialRetry(attempts=attempts)
@@ -193,7 +193,7 @@ async def test_change_urls_in_request(aiohttp_client, loop, attempts):
 
 
 @pytest.mark.parametrize("attempts", [2, 3])
-async def test_change_urls_as_tuple_in_request(aiohttp_client, loop, attempts):
+async def test_change_urls_as_tuple_in_request(aiohttp_client, attempts):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(
         aiohttp_client,
         retry_options=ExponentialRetry(attempts=attempts)
@@ -209,7 +209,7 @@ async def test_change_urls_as_tuple_in_request(aiohttp_client, loop, attempts):
 
 
 @pytest.mark.parametrize("url", [{"/ping", "/internal_error"}, []])
-async def test_pass_bad_urls(aiohttp_client, loop, url):
+async def test_pass_bad_urls(aiohttp_client, url):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     with pytest.raises(ValueError):
         async with retry_client.get(url=url):
@@ -226,7 +226,7 @@ async def test_pass_bad_urls(aiohttp_client, loop, url):
     ("/patch_handler", 'patch'),
     ("/delete_handler", 'delete'),
 ])
-async def test_methods(aiohttp_client, loop, url, method):
+async def test_methods(aiohttp_client, url, method):
     retry_client, _ = await get_retry_client_and_test_app_for_test(aiohttp_client)
     method_func = getattr(retry_client, method)
     async with method_func(url) as response:
@@ -235,7 +235,7 @@ async def test_methods(aiohttp_client, loop, url, method):
     await retry_client.close()
 
 
-async def test_not_found_error_with_retry_client_raise_for_status(aiohttp_client, loop):
+async def test_not_found_error_with_retry_client_raise_for_status(aiohttp_client):
     test_app = App()
     app = test_app.web_app
 
@@ -262,7 +262,7 @@ async def test_not_found_error_with_retry_client_raise_for_status(aiohttp_client
     await client.close()
 
 
-async def test_request(aiohttp_client, loop):
+async def test_request(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     async with retry_client.request(hdrs.METH_GET, '/ping') as response:
         text = await response.text()
@@ -274,7 +274,7 @@ async def test_request(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_url_as_yarl(aiohttp_client, loop):
+async def test_url_as_yarl(aiohttp_client):
     """https://github.com/inyutin/aiohttp_retry/issues/41"""
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     async with retry_client.get(URL('/ping')) as response:
@@ -287,7 +287,7 @@ async def test_url_as_yarl(aiohttp_client, loop):
     await retry_client.close()
 
 
-async def test_change_client_retry_options(aiohttp_client, loop):
+async def test_change_client_retry_options(aiohttp_client):
     retry_options = ExponentialRetry(attempts=5)
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client, retry_options=retry_options)
 
@@ -307,5 +307,15 @@ async def test_change_client_retry_options(aiohttp_client, loop):
         text = await response.text()
         assert response.status == 500
         assert test_app.counter == 2
+
+    await retry_client.close()
+
+
+async def test_not_retry_server_errors(aiohttp_client):
+    retry_options = ExponentialRetry(retry_all_server_errors=False)
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    async with retry_client.get('/internal_error', retry_options) as response:
+        assert response.status == 500
+        assert test_app.counter == 1
 
     await retry_client.close()

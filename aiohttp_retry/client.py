@@ -57,7 +57,9 @@ class _RequestContext:
         self._response: Optional[ClientResponse] = None
 
     def _is_status_code_ok(self, code: int) -> bool:
-        return code not in self._retry_options.statuses and code < 500
+        if code >= 500 and self._retry_options.retry_all_server_errors:
+            return False
+        return code not in self._retry_options.statuses
 
     async def _do_request(self) -> ClientResponse:
         current_attempt = 0

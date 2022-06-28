@@ -26,18 +26,18 @@ class App:
 
     async def internal_error_handler(self, _: web.Request) -> web.Response:
         self.counter += 1
-        return web.HTTPInternalServerError()
+        raise web.HTTPInternalServerError()
 
     async def not_found_error_handler(self, _: web.Request) -> web.Response:
         self.counter += 1
-        return web.HTTPNotFound()
+        raise web.HTTPNotFound()
 
     async def sometimes_error(self, _: web.Request) -> web.Response:
         self.counter += 1
         if self.counter == 3:
             return web.Response(text='Ok!', status=200)
 
-        return web.HTTPInternalServerError()
+        raise web.HTTPInternalServerError()
 
     @property
     def web_app(self) -> web.Application:

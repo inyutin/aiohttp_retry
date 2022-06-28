@@ -2,7 +2,7 @@
 
 [![codecov](https://codecov.io/gh/inyutin/aiohttp_retry/branch/master/graph/badge.svg?token=ZWGAXSF1SP)](https://codecov.io/gh/inyutin/aiohttp_retry)
 
-Python 3.6 or higher.
+Python 3.7 or higher.
 
 **Install**: `pip install aiohttp-retry`.
 
@@ -104,6 +104,7 @@ class RetryOptionsBase:
         attempts: int = 3,  # How many times we should retry
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+        retry_all_server_errors: bool = True,  # If should retry all 500 errors or not
     ):
         ...
 
@@ -114,6 +115,9 @@ class RetryOptionsBase:
 ```
 You can specify `RetryOptions` both for `RetryClient` and it's methods. 
 `RetryOptions` in methods override `RetryOptions` defined in `RetryClient` constructor.
+
+**Important**: by default all 5xx responses are retried + statuses you specified as ```statuses``` param
+If you will pass ```retry_all_server_errors=False``` than you can manually set what 5xx errors to retry.
 
 You can define your own timeouts logic or use: 
 - ```ExponentialRetry``` with exponential backoff

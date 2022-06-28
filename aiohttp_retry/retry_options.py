@@ -10,6 +10,7 @@ class RetryOptionsBase:
         attempts: int = 3,  # How many times we should retry
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+        retry_all_server_errors: bool = True,    # If should retry all 500 errors or not
     ):
         self.attempts: int = attempts
         if statuses is None:
@@ -19,6 +20,8 @@ class RetryOptionsBase:
         if exceptions is None:
             exceptions = set()
         self.exceptions: Iterable[Type[Exception]] = exceptions
+
+        self.retry_all_server_errors = retry_all_server_errors
 
     @abc.abstractmethod
     def get_timeout(self, attempt: int) -> float:
@@ -34,8 +37,9 @@ class ExponentialRetry(RetryOptionsBase):
         factor: float = 2.0,  # How much we increase timeout each time
         statuses: Optional[Set[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
+        retry_all_server_errors: bool = True,
     ):
-        super().__init__(attempts, statuses, exceptions)
+        super().__init__(attempts, statuses, exceptions, retry_all_server_errors)
 
         self._start_timeout: float = start_timeout
         self._max_timeout: float = max_timeout
@@ -61,8 +65,9 @@ class RandomRetry(RetryOptionsBase):
         min_timeout: float = 0.1,  # Minimum possible timeout
         max_timeout: float = 3.0,  # Maximum possible timeout between tries
         random_func: Callable[[], float] = random.random,  # Random number generator
+        retry_all_server_errors: bool = True,
     ):
-        super().__init__(attempts, statuses, exceptions)
+        super().__init__(attempts, statuses, exceptions, retry_all_server_errors)
         self.attempts: int = attempts
         self.min_timeout: float = min_timeout
         self.max_timeout: float = max_timeout
@@ -79,8 +84,9 @@ class ListRetry(RetryOptionsBase):
         timeouts: List[float],
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+        retry_all_server_errors: bool = True,
     ):
-        super().__init__(len(timeouts), statuses, exceptions)
+        super().__init__(len(timeouts), statuses, exceptions, retry_all_server_errors)
         self.timeouts = timeouts
 
     def get_timeout(self, attempt: int) -> float:
@@ -96,8 +102,9 @@ class FibonacciRetry(RetryOptionsBase):
         statuses: Optional[Iterable[int]] = None,
         exceptions: Optional[Iterable[Type[Exception]]] = None,
         max_timeout: float = 3.0,  # Maximum possible timeout between tries
+        retry_all_server_errors: bool = True,
     ):
-        super().__init__(attempts, statuses, exceptions)
+        super().__init__(attempts, statuses, exceptions, retry_all_server_errors)
 
         self.max_timeout = max_timeout
         self.multiplier = multiplier
@@ -123,6 +130,7 @@ class JitterRetry(ExponentialRetry):
         statuses: Optional[Set[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
         random_interval_size: float = 2.0,  # size of interval for random component
+        retry_all_server_errors: bool = True,
     ):
         super().__init__(
             attempts=attempts,
@@ -131,6 +139,7 @@ class JitterRetry(ExponentialRetry):
             factor=factor,
             statuses=statuses,
             exceptions=exceptions,
+            retry_all_server_errors=retry_all_server_errors,
         )
 
         self._start_timeout: float = start_timeout

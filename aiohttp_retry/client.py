@@ -64,12 +64,12 @@ class _RequestContext:
     async def _do_request(self) -> ClientResponse:
         current_attempt = 0
         while True:
-            current_attempt += 1
-            self._logger.debug("Attempt {} out of {}".format(current_attempt, self._retry_options.attempts))
-            if current_attempt > 1:
+            self._logger.debug(f"Attempt {current_attempt+1} out of {self._retry_options.attempts}")
+            if current_attempt > 0:
                 retry_wait = self._retry_options.get_timeout(current_attempt)
                 await asyncio.sleep(retry_wait)
 
+            current_attempt += 1
             try:
                 response: ClientResponse = await self._request(
                     self._method,

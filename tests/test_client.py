@@ -11,7 +11,7 @@ from aiohttp import (
 )
 from yarl import URL
 
-from aiohttp_retry import ExponentialRetry, RetryClient
+from aiohttp_retry import ExponentialRetry, ListRetry, RetryClient
 from tests.app import App
 
 
@@ -317,5 +317,16 @@ async def test_not_retry_server_errors(aiohttp_client):
     async with retry_client.get('/internal_error', retry_options) as response:
         assert response.status == 500
         assert test_app.counter == 1
+
+    await retry_client.close()
+
+
+async def test_list_retry_works_for_multiple_attempts(aiohttp_client):
+    retry_options = ListRetry(timeouts=[0]*3)
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+
+    async with retry_client.get('/internal_error', retry_options) as response:
+        assert response.status == 500
+        assert test_app.counter == 3
 
     await retry_client.close()

@@ -147,3 +147,14 @@ await retry_client.close()
 In this example we request ```/interval_error```, fail and then successfully request ```/ping```.
 If you specify less urls than ```attempts``` number in ```RetryOptions```, ```RetryClient``` will request last url at last attempts.
 This means that in example above we would request ```/ping``` once again in case of failure.
+
+### Types
+
+`aiohttp_retry` is a typed project. It should be fully compatablie with mypy.
+
+It also introduce one special type:
+```
+ClientType = Union[ClientSession, RetryClient]
+```
+
+This type can be imported by ```from aiohttp_retry.types import ClientType```

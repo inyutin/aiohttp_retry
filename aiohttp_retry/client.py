@@ -129,16 +129,25 @@ def _url_to_urls(url: _URL_TYPE, attempts: int) -> Tuple[StrOrURL, ...]:
 class RetryClient:
     def __init__(
         self,
+        client_session: Optional[ClientSession] = None,
         logger: Optional[_LoggerType] = None,
-        retry_options: RetryOptionsBase = ExponentialRetry(),
+        retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: bool = False,
-        *args: Any, **kwargs: Any
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
-        self._client = ClientSession(*args, **kwargs)
-        self._closed = False
+        if client_session is not None:
+            client = client_session
+            closed = None
+        else:
+            client = ClientSession(*args, **kwargs)
+            closed = False
+
+        self._client = client
+        self._closed = closed
 
         self._logger: _LoggerType = logger or logging.getLogger("aiohttp_retry")
-        self._retry_options: RetryOptionsBase = retry_options
+        self._retry_options: RetryOptionsBase = retry_options or ExponentialRetry()
         self._raise_for_status = raise_for_status
 
     def __del__(self) -> None:

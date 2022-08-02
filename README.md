@@ -21,6 +21,20 @@ async def main():
         
     await retry_client.close()
 ```
+
+```python
+from aiohttp import ClientSession
+from aiohttp_retry import RetryClient 
+
+async def main():
+    client_session = ClientSession()
+    retry_client = RetryClient(client_session=client_session)
+    async with retry_client.get('https://ya.ru') as response:
+        print(response.status)
+
+    await client_session.close()
+```
+
 ```python
 from aiohttp_retry import RetryClient, RandomRetry
 

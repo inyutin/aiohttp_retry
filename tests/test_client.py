@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import Tuple
+from typing import Optional, Tuple
 
 import pytest
 from aiohttp import (
@@ -12,20 +12,20 @@ from aiohttp import (
 from yarl import URL
 
 from aiohttp_retry import ExponentialRetry, ListRetry, RetryClient
+from aiohttp_retry.retry_options import RetryOptionsBase
 from tests.app import App
 
 
 async def get_retry_client_and_test_app_for_test(
     aiohttp_client,
     raise_for_status: bool = False,
-    *args, **kwargs
+    retry_options: Optional[RetryOptionsBase] = None,
 ) -> Tuple[RetryClient, App]:
     test_app = App()
     app = test_app.web_app()
+    client = await aiohttp_client(app, raise_for_status=raise_for_status)
 
-    retry_client = RetryClient(*args, **kwargs)
-    retry_client._client = await aiohttp_client(app, raise_for_status=raise_for_status)
-
+    retry_client = RetryClient(client_session=client, retry_options=retry_options)
     return retry_client, test_app
 
 
@@ -210,7 +210,7 @@ async def test_change_urls_as_tuple_in_request(aiohttp_client, attempts):
 
 @pytest.mark.parametrize("url", [{"/ping", "/internal_error"}, []])
 async def test_pass_bad_urls(aiohttp_client, url):
-    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    retry_client, _ = await get_retry_client_and_test_app_for_test(aiohttp_client)
     with pytest.raises(ValueError):
         async with retry_client.get(url=url):
             pass
@@ -328,5 +328,19 @@ async def test_list_retry_works_for_multiple_attempts(aiohttp_client):
     async with retry_client.get('/internal_error', retry_options) as response:
         assert response.status == 500
         assert test_app.counter == 3
+
+    await retry_client.close()
+
+
+async def test_implicit_client(aiohttp_client):
+    # check that if client not passed that it created implicitly
+    test_app = App()
+
+    retry_client = RetryClient()
+    assert retry_client._client is not None
+
+    retry_client._client = await aiohttp_client(test_app.web_app())
+    async with retry_client.get('/ping') as response:
+        assert response.status == 200
 
     await retry_client.close()

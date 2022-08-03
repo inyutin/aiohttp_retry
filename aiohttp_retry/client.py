@@ -84,6 +84,7 @@ class _RequestContext:
                 if current_attempt < self._retry_options.attempts:
                     is_exc_valid = any([isinstance(e, exc) for exc in self._retry_options.exceptions])
                     if is_exc_valid:
+                        self._logger.debug(f"Retrying after exception: {repr(e)}")
                         continue
 
                 raise e
@@ -93,6 +94,8 @@ class _RequestContext:
                     response.raise_for_status()
                 self._response = response
                 return response
+
+            self._logger.debug(f"Retrying after response code: {response.status}")
 
     def __await__(self) -> Generator[Any, None, ClientResponse]:
         return self.__aenter__().__await__()

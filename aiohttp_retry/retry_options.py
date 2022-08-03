@@ -121,6 +121,7 @@ class FibonacciRetry(RetryOptionsBase):
 
 class JitterRetry(ExponentialRetry):
     """https://github.com/inyutin/aiohttp_retry/issues/44"""
+
     def __init__(
         self,
         attempts: int = 3,  # How many times we should retry

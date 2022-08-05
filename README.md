@@ -9,6 +9,11 @@ Python 3.7 or higher.
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/inyutin)
 
 
+### Breaking API changes
+- Since 2.5.6 this is a new parameter in ```get_timeout``` func called "response".  
+If you have defined your own ```RetryOptions```, you should add this param into it.
+Issue about this: https://github.com/inyutin/aiohttp_retry/issues/59
+
 ### Examples of usage:
 ```python
 from aiohttp_retry import RetryClient, ExponentialRetry
@@ -123,7 +128,7 @@ class RetryOptionsBase:
         ...
 
     @abc.abstractmethod
-    def get_timeout(self, attempt: int, response: Optional[Response] = None) -> float:
+    def get_timeout(self, attempt: int) -> float:
         raise NotImplementedError
 
 ```
@@ -139,10 +144,6 @@ You can define your own timeouts logic or use:
 - ```ListRetry``` with backoff you predefine by list
 - ```FibonacciRetry``` with backoff that looks like fibonacci sequence
 - ```JitterRetry``` exponential retry with a bit of randomness
-
-**Important**: you can server response as an parameter for calculating next timeout.  
-However this response can be None, server didn't make a response or you have set up ```raise_for_status=True```
-Look here for an example: https://github.com/inyutin/aiohttp_retry/issues/59
 
 #### Request Trace Context
 `RetryClient` add *current attempt number* to `request_trace_ctx` (see examples, 

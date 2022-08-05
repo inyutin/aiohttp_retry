@@ -3,8 +3,6 @@ import random
 from typing import Any, Callable, Iterable, List, Optional, Set, Type
 from warnings import warn
 
-from aiohttp import ClientResponse
-
 
 class RetryOptionsBase:
     def __init__(
@@ -26,7 +24,7 @@ class RetryOptionsBase:
         self.retry_all_server_errors = retry_all_server_errors
 
     @abc.abstractmethod
-    def get_timeout(self, attempt: int, response: Optional[ClientResponse] = None) -> float:
+    def get_timeout(self, attempt: int) -> float:
         raise NotImplementedError
 
 
@@ -47,7 +45,7 @@ class ExponentialRetry(RetryOptionsBase):
         self._max_timeout: float = max_timeout
         self._factor: float = factor
 
-    def get_timeout(self, attempt: int, response: Optional[ClientResponse] = None) -> float:
+    def get_timeout(self, attempt: int) -> float:
         """Return timeout with exponential backoff."""
         timeout = self._start_timeout * (self._factor ** attempt)
         return min(timeout, self._max_timeout)
@@ -75,7 +73,7 @@ class RandomRetry(RetryOptionsBase):
         self.max_timeout: float = max_timeout
         self.random = random_func
 
-    def get_timeout(self, attempt: int, response: Optional[ClientResponse] = None) -> float:
+    def get_timeout(self, attempt: int) -> float:
         """Generate random timeouts."""
         return self.min_timeout + self.random() * (self.max_timeout - self.min_timeout)
 
@@ -91,7 +89,7 @@ class ListRetry(RetryOptionsBase):
         super().__init__(len(timeouts), statuses, exceptions, retry_all_server_errors)
         self.timeouts = timeouts
 
-    def get_timeout(self, attempt: int, response: Optional[ClientResponse] = None) -> float:
+    def get_timeout(self, attempt: int) -> float:
         """timeouts from a defined list."""
         return self.timeouts[attempt]
 
@@ -113,7 +111,7 @@ class FibonacciRetry(RetryOptionsBase):
         self.prev_step = 1.0
         self.current_step = 1.0
 
-    def get_timeout(self, attempt: int, response: Optional[ClientResponse] = None) -> float:
+    def get_timeout(self, attempt: int) -> float:
         new_current_step = self.prev_step + self.current_step
         self.prev_step = self.current_step
         self.current_step = new_current_step
@@ -150,6 +148,6 @@ class JitterRetry(ExponentialRetry):
         self._factor: float = factor
         self._random_interval_size = random_interval_size
 
-    def get_timeout(self, attempt: int, response: Optional[ClientResponse] = None) -> float:
+    def get_timeout(self, attempt: int) -> float:
         timeout: float = super().get_timeout(attempt) + random.uniform(0, self._random_interval_size) ** self._factor
         return timeout

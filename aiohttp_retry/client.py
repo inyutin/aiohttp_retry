@@ -65,6 +65,9 @@ class _RequestContext:
         current_attempt = 0
         while True:
             self._logger.debug(f"Attempt {current_attempt+1} out of {self._retry_options.attempts}")
+            if current_attempt > 0:
+                retry_wait = self._retry_options.get_timeout(current_attempt)
+                await asyncio.sleep(retry_wait)
 
             current_attempt += 1
             try:
@@ -77,27 +80,22 @@ class _RequestContext:
                         **self._trace_request_ctx,
                     },
                 )
-
-                if self._is_status_code_ok(response.status) or current_attempt == self._retry_options.attempts:
-                    if self._raise_for_status:
-                        response.raise_for_status()
-                    self._response = response
-                    return response
-
-                self._logger.debug(f"Retrying after response code: {response.status}")
-                retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=response)
             except Exception as e:
-                if current_attempt >= self._retry_options.attempts:
-                    raise e
+                if current_attempt < self._retry_options.attempts:
+                    is_exc_valid = any([isinstance(e, exc) for exc in self._retry_options.exceptions])
+                    if is_exc_valid:
+                        self._logger.debug(f"Retrying after exception: {repr(e)}")
+                        continue
 
-                is_exc_valid = any([isinstance(e, exc) for exc in self._retry_options.exceptions])
-                if not is_exc_valid:
-                    raise e
+                raise e
 
-                self._logger.debug(f"Retrying after exception: {repr(e)}")
-                retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=None)
+            if self._is_status_code_ok(response.status) or current_attempt == self._retry_options.attempts:
+                if self._raise_for_status:
+                    response.raise_for_status()
+                self._response = response
+                return response
 
-            await asyncio.sleep(retry_wait)
+            self._logger.debug(f"Retrying after response code: {response.status}")
 
     def __await__(self) -> Generator[Any, None, ClientResponse]:
         return self.__aenter__().__await__()

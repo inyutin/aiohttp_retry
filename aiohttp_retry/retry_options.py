@@ -1,9 +1,11 @@
 import abc
 import random
-from typing import Any, Callable, Iterable, List, Optional, Set, Type
+from typing import Any, Awaitable, Callable, Iterable, List, Optional, Set, Type
 from warnings import warn
 
 from aiohttp import ClientResponse
+
+EvaluateResponseCallbackType = Callable[[ClientResponse], Awaitable[bool]]
 
 
 class RetryOptionsBase:
@@ -13,6 +15,8 @@ class RetryOptionsBase:
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
         retry_all_server_errors: bool = True,    # If should retry all 500 errors or not
+        # a callback that will run on response to decide if retry
+        evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
     ):
         self.attempts: int = attempts
         if statuses is None:
@@ -24,6 +28,7 @@ class RetryOptionsBase:
         self.exceptions: Iterable[Type[Exception]] = exceptions
 
         self.retry_all_server_errors = retry_all_server_errors
+        self.evaluate_response_callback = evaluate_response_callback
 
     @abc.abstractmethod
     def get_timeout(self, attempt: int, response: Optional[ClientResponse] = None) -> float:
@@ -40,8 +45,15 @@ class ExponentialRetry(RetryOptionsBase):
         statuses: Optional[Set[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
         retry_all_server_errors: bool = True,
+        evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
     ):
-        super().__init__(attempts, statuses, exceptions, retry_all_server_errors)
+        super().__init__(
+            attempts=attempts,
+            statuses=statuses,
+            exceptions=exceptions,
+            retry_all_server_errors=retry_all_server_errors,
+            evaluate_response_callback=evaluate_response_callback,
+        )
 
         self._start_timeout: float = start_timeout
         self._max_timeout: float = max_timeout
@@ -68,8 +80,16 @@ class RandomRetry(RetryOptionsBase):
         max_timeout: float = 3.0,  # Maximum possible timeout between tries
         random_func: Callable[[], float] = random.random,  # Random number generator
         retry_all_server_errors: bool = True,
+        evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
     ):
-        super().__init__(attempts, statuses, exceptions, retry_all_server_errors)
+        super().__init__(
+            attempts=attempts,
+            statuses=statuses,
+            exceptions=exceptions,
+            retry_all_server_errors=retry_all_server_errors,
+            evaluate_response_callback=evaluate_response_callback,
+        )
+
         self.attempts: int = attempts
         self.min_timeout: float = min_timeout
         self.max_timeout: float = max_timeout
@@ -105,8 +125,15 @@ class FibonacciRetry(RetryOptionsBase):
         exceptions: Optional[Iterable[Type[Exception]]] = None,
         max_timeout: float = 3.0,  # Maximum possible timeout between tries
         retry_all_server_errors: bool = True,
+        evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
     ):
-        super().__init__(attempts, statuses, exceptions, retry_all_server_errors)
+        super().__init__(
+            attempts=attempts,
+            statuses=statuses,
+            exceptions=exceptions,
+            retry_all_server_errors=retry_all_server_errors,
+            evaluate_response_callback=evaluate_response_callback,
+        )
 
         self.max_timeout = max_timeout
         self.multiplier = multiplier
@@ -134,6 +161,7 @@ class JitterRetry(ExponentialRetry):
         exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
         random_interval_size: float = 2.0,  # size of interval for random component
         retry_all_server_errors: bool = True,
+        evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
     ):
         super().__init__(
             attempts=attempts,
@@ -143,6 +171,7 @@ class JitterRetry(ExponentialRetry):
             statuses=statuses,
             exceptions=exceptions,
             retry_all_server_errors=retry_all_server_errors,
+            evaluate_response_callback=evaluate_response_callback,
         )
 
         self._start_timeout: float = start_timeout

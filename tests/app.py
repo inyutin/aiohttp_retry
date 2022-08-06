@@ -10,6 +10,7 @@ class App:
         app.router.add_get('/internal_error', self.internal_error_handler)
         app.router.add_get('/not_found_error', self.not_found_error_handler)
         app.router.add_get('/sometimes_error', self.sometimes_error)
+        app.router.add_get('/sometimes_json', self.sometimes_json)
 
         app.router.add_options('/options_handler', self.ping_handler)
         app.router.add_head('/head_handler', self.ping_handler)
@@ -38,6 +39,13 @@ class App:
             return web.Response(text='Ok!', status=200)
 
         raise web.HTTPInternalServerError()
+
+    async def sometimes_json(self, _: web.Request) -> web.Response:
+        self.counter += 1
+        if self.counter == 3:
+            return web.json_response(data={'status': 'Ok!'}, status=200)
+
+        return web.Response(text='Ok!', status=200)
 
     @property
     def web_app(self) -> web.Application:

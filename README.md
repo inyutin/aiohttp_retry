@@ -124,6 +124,8 @@ class RetryOptionsBase:
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
         retry_all_server_errors: bool = True,  # If should retry all 500 errors or not
+        # a callback that will run on response to decide if retry
+        evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
     ):
         ...
 
@@ -148,6 +150,9 @@ You can define your own timeouts logic or use:
 **Important**: you can proceed server response as an parameter for calculating next timeout.  
 However this response can be None, server didn't make a response or you have set up ```raise_for_status=True```
 Look here for an example: https://github.com/inyutin/aiohttp_retry/issues/59
+
+Additionally, you can specify ```evaluate_response_callback```. It receive a ```ClientResponse``` and decide to retry or not by returning a bool.
+It can be useful, if server API sometimes response with malformed data.
 
 #### Request Trace Context
 `RetryClient` add *current attempt number* to `request_trace_ctx` (see examples, 

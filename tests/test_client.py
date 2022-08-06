@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 
 import pytest
 from aiohttp import (
+    ClientResponse,
     ClientResponseError,
     ClientSession,
     TraceConfig,
@@ -344,3 +345,22 @@ async def test_implicit_client(aiohttp_client):
         assert response.status == 200
 
     await retry_client.close()
+
+
+async def test_evaluate_response_callback(aiohttp_client):
+    async def evaluate_response(response: ClientResponse) -> bool:
+        try:
+            await response.json()
+        except:
+            return False
+        return True
+
+    retry_options = ExponentialRetry(attempts=5, evaluate_response_callback=evaluate_response)
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client, retry_options=retry_options)
+
+    async with retry_client.get('/sometimes_json') as response:
+        body = await response.json()
+        assert response.status == 200
+        assert body == {'status': 'Ok!'}
+
+        assert test_app.counter == 3

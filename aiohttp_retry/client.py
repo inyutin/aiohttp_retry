@@ -27,6 +27,9 @@ class _Logger(Protocol):
     @abstractmethod
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None: pass
 
+    @abstractmethod
+    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None: pass
+
 
 # url itself or list of urls for changing between retries
 _RAW_URL_TYPE = Union[StrOrURL, YARL_URL]
@@ -81,10 +84,23 @@ class _RequestContext:
                 if self._is_status_code_ok(response.status) or current_attempt == self._retry_options.attempts:
                     if self._raise_for_status:
                         response.raise_for_status()
-                    self._response = response
-                    return response
 
-                self._logger.debug(f"Retrying after response code: {response.status}")
+                    if self._retry_options.evaluate_response_callback is not None:
+                        try:
+                            is_response_correct = await self._retry_options.evaluate_response_callback(response)
+                        except Exception:
+                            self._logger.exception('while evaluating response an exception occurred')
+                            is_response_correct = False
+                    else:
+                        is_response_correct = True
+
+                    if is_response_correct:
+                        self._response = response
+                        return response
+                    else:
+                        self._logger.debug(f"Retrying after evaluate response callback check")
+                else:
+                    self._logger.debug(f"Retrying after response code: {response.status}")
                 retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=response)
             except Exception as e:
                 if current_attempt >= self._retry_options.attempts:

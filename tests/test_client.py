@@ -13,7 +13,7 @@ from aiohttp import (
 )
 from yarl import URL
 
-from aiohttp_retry import ExponentialRetry, ListRetry, RetryClient, retry_options
+from aiohttp_retry import ExponentialRetry, ListRetry, RetryClient
 from aiohttp_retry.client import RequestParams
 from aiohttp_retry.retry_options import RetryOptionsBase
 from tests.app import App
@@ -458,5 +458,20 @@ async def test_request_headers(aiohttp_client):
         assert text == 'Ok!'
 
         assert test_app.counter == 1
+
+    await retry_client.close()
+
+
+async def test_list_retry_all_failed(aiohttp_client):
+    # there was a specific bug
+    async def evaluate_response(response: ClientResponse) -> bool:
+        return False
+
+    retry_options = ListRetry(timeouts=[1]*3, statuses={403}, evaluate_response_callback=evaluate_response)
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+
+    async with retry_client.get('/with_auth', retry_options=retry_options) as response:
+        assert response.status == 403
+        assert test_app.counter == 3
 
     await retry_client.close()

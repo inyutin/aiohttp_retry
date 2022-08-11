@@ -57,6 +57,8 @@ class App:
         return web.Response(text='Ok!', status=200)
 
     async def with_auth(self, request: web.Request) -> web.Response:
+        self.counter += 1
+
         # BasicAuth("username", "password")
         if request.headers.get('Authorization') != 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=':
             return web.Response(text='incorrect auth', status=403)

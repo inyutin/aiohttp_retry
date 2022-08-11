@@ -368,17 +368,17 @@ async def test_evaluate_response_callback(aiohttp_client):
         assert test_app.counter == 3
 
 
-async def test_multiply_paths_by_requests(aiohttp_client):
+async def test_multiply_urls_by_requests(aiohttp_client):
     retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
     async with retry_client.requests(
         params_list=[
             RequestParams(
                 method='GET',
-                path='/internal_error',
+                url='/internal_error',
             ),
             RequestParams(
                 method='GET',
-                path='/ping',
+                url='/ping',
             ),
         ]
     ) as response:
@@ -398,11 +398,11 @@ async def test_multiply_methods_by_requests(aiohttp_client):
         params_list=[
             RequestParams(
                 method='POST',
-                path='/ping',
+                url='/ping',
             ),
             RequestParams(
                 method='GET',
-                path='/ping',
+                url='/ping',
             ),
         ]
     ) as response:
@@ -420,11 +420,11 @@ async def test_change_headers(aiohttp_client):
         params_list=[
             RequestParams(
                 method='GET',
-                path='/check_headers',
+                url='/check_headers',
             ),
             RequestParams(
                 method='GET',
-                path='/check_headers',
+                url='/check_headers',
                 headers={'correct_headers': 'True'},
             ),
         ]
@@ -446,5 +446,17 @@ async def test_additional_params(aiohttp_client):
         text = await response.text()
         assert response.status == 200
         assert text == 'Ok!'
+
+    await retry_client.close()
+
+
+async def test_request_headers(aiohttp_client):
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    async with retry_client.get(url='/check_headers', headers={'correct_headers': 'True'}) as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 1
 
     await retry_client.close()

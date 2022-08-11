@@ -55,7 +55,7 @@ RequestFunc = Callable[..., Awaitable[ClientResponse]]
 @dataclass
 class RequestParams:
     method: str
-    path: _RAW_URL_TYPE
+    url: _RAW_URL_TYPE
     headers: Optional[Dict[str, Any]] = None
     trace_request_ctx: Optional[Dict[str, Any]] = None
     kwargs: Optional[Dict[str, Any]] = None
@@ -98,8 +98,8 @@ class _RequestContext:
                     params = self._params_list[-1]
 
                 response: ClientResponse = await self._request_func(
-                    method=params.method,
-                    path=params.path,
+                    params.method,
+                    params.url,
                     headers=params.headers,
                     trace_request_ctx={
                         'current_attempt': current_attempt,
@@ -351,10 +351,11 @@ class RetryClient:
         url_list = _url_to_urls(url)
         params_list = [RequestParams(
             method=method,
-            path=path,
+            url=url,
+            headers=kwargs.pop('headers', {}),
             trace_request_ctx=kwargs.pop('trace_request_ctx', None),
             kwargs=kwargs,
-        ) for path in url_list]
+        ) for url in url_list]
 
         return self._make_requests(
             params_list=params_list,

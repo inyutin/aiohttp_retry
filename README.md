@@ -76,11 +76,11 @@ async def main():
         params_list=[
             RequestParams(
                 method='GET',
-                path='https://ya.ru',
+                url='https://ya.ru',
             ),
             RequestParams(
                 method='GET',
-                path='https://ya.ru',
+                url='https://ya.ru',
                 headers={'some_header': 'some_value'},
             ),
         ]
@@ -193,7 +193,7 @@ for more info see [aiohttp doc](https://docs.aiohttp.org/en/stable/client_advanc
 @dataclass
 class RequestParams:
     method: str
-    path: _RAW_URL_TYPE
+    url: _RAW_URL_TYPE
     trace_request_ctx: Optional[Dict[str, Any]] = None
     kwargs: Optional[Dict[str, Any]] = None
 ```
@@ -209,7 +209,7 @@ def requests(
 
 You can find an example of usage above or in tests.  
 But basically `RequestParams` is a structure to define params for `ClientSession.request` func.  
-`method`, `path`, `headers` `trace_request_ctx` defined outside kwargs, because they are popular.  
+`method`, `url`, `headers` `trace_request_ctx` defined outside kwargs, because they are popular.  
 
 There is also an old way to change URL between retries by specifying ```url``` as list of urls. Example:
 ```python

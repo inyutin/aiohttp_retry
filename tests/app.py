@@ -11,6 +11,7 @@ class App:
         app.router.add_get('/not_found_error', self.not_found_error_handler)
         app.router.add_get('/sometimes_error', self.sometimes_error)
         app.router.add_get('/sometimes_json', self.sometimes_json)
+        app.router.add_get('/check_headers', self.check_headers)
 
         app.router.add_options('/options_handler', self.ping_handler)
         app.router.add_head('/head_handler', self.ping_handler)
@@ -44,6 +45,13 @@ class App:
         self.counter += 1
         if self.counter == 3:
             return web.json_response(data={'status': 'Ok!'}, status=200)
+
+        return web.Response(text='Ok!', status=200)
+
+    async def check_headers(self, request: web.Request) -> web.Response:
+        self.counter += 1
+        if request.headers.get('correct_headers') != 'True':
+            raise web.HTTPNotAcceptable()
 
         return web.Response(text='Ok!', status=200)
 

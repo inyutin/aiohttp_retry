@@ -12,7 +12,8 @@ from aiohttp import (
 )
 from yarl import URL
 
-from aiohttp_retry import ExponentialRetry, ListRetry, RetryClient
+from aiohttp_retry import ExponentialRetry, ListRetry, RetryClient, retry_options
+from aiohttp_retry.client import RequestParams
 from aiohttp_retry.retry_options import RetryOptionsBase
 from tests.app import App
 
@@ -364,3 +365,73 @@ async def test_evaluate_response_callback(aiohttp_client):
         assert body == {'status': 'Ok!'}
 
         assert test_app.counter == 3
+
+
+async def test_multiply_paths_by_requests(aiohttp_client):
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    async with retry_client.requests(
+        params_list=[
+            RequestParams(
+                method='GET',
+                path='/internal_error',
+            ),
+            RequestParams(
+                method='GET',
+                path='/ping',
+            ),
+        ]
+    ) as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 2
+
+    await retry_client.close()
+
+
+async def test_multiply_methods_by_requests(aiohttp_client):
+    retry_options = ExponentialRetry(statuses={405})  # method not allowed
+    retry_client, _ = await get_retry_client_and_test_app_for_test(aiohttp_client, retry_options=retry_options)
+    async with retry_client.requests(
+        params_list=[
+            RequestParams(
+                method='POST',
+                path='/ping',
+            ),
+            RequestParams(
+                method='GET',
+                path='/ping',
+            ),
+        ]
+    ) as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+    await retry_client.close()
+
+
+async def test_change_headers(aiohttp_client):
+    retry_options = ExponentialRetry(statuses={406})
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client, retry_options=retry_options)
+    async with retry_client.requests(
+        params_list=[
+            RequestParams(
+                method='GET',
+                path='/check_headers',
+            ),
+            RequestParams(
+                method='GET',
+                path='/check_headers',
+                headers={'correct_headers': 'True'},
+            ),
+        ]
+    ) as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
+
+        assert test_app.counter == 2
+
+    await retry_client.close()

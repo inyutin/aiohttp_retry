@@ -2,7 +2,20 @@ import asyncio
 import logging
 import sys
 from abc import abstractmethod
-from typing import Any, Callable, Generator, List, Optional, Tuple, Union
+from dataclasses import dataclass
+from types import TracebackType
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from aiohttp import ClientResponse, ClientSession, hdrs
 from aiohttp.typedefs import StrOrURL
@@ -36,25 +49,33 @@ _RAW_URL_TYPE = Union[StrOrURL, YARL_URL]
 _URL_TYPE = Union[_RAW_URL_TYPE, List[_RAW_URL_TYPE], Tuple[_RAW_URL_TYPE, ...]]
 _LoggerType = Union[_Logger, logging.Logger]
 
+RequestFunc = Callable[..., Awaitable[ClientResponse]]
+
+
+@dataclass
+class RequestParams:
+    method: str
+    path: _RAW_URL_TYPE
+    headers: Optional[Dict[str, Any]] = None
+    trace_request_ctx: Optional[Dict[str, Any]] = None
+    kwargs: Optional[Dict[str, Any]] = None
+
 
 class _RequestContext:
     def __init__(
         self,
-        request: Callable[..., Any],  # Request operation, like POST or GET
-        method: str,
-        urls: Tuple[StrOrURL, ...],
+        request_func: RequestFunc,
+        params_list: List[RequestParams],
         logger: _LoggerType,
         retry_options: RetryOptionsBase,
         raise_for_status: bool = False,
-        **kwargs: Any
     ) -> None:
-        self._request = request
-        self._method = method
-        self._urls = urls
+        assert len(params_list) > 0
+
+        self._request_func = request_func
+        self._params_list = params_list
         self._logger = logger
         self._retry_options = retry_options
-        self._kwargs = kwargs
-        self._trace_request_ctx = kwargs.pop('trace_request_ctx', {})
         self._raise_for_status = raise_for_status
 
         self._response: Optional[ClientResponse] = None
@@ -71,14 +92,20 @@ class _RequestContext:
 
             current_attempt += 1
             try:
-                response: ClientResponse = await self._request(
-                    self._method,
-                    self._urls[current_attempt - 1],
-                    **self._kwargs,
+                try:
+                    params = self._params_list[current_attempt - 1]
+                except IndexError:
+                    params = self._params_list[-1]
+
+                response: ClientResponse = await self._request_func(
+                    method=params.method,
+                    path=params.path,
+                    headers=params.headers,
                     trace_request_ctx={
                         'current_attempt': current_attempt,
-                        **self._trace_request_ctx,
+                        **(params.trace_request_ctx or {}),
                     },
+                    **(params.kwargs or {}),
                 )
 
                 if self._is_status_code_ok(response.status) or current_attempt == self._retry_options.attempts:
@@ -121,15 +148,20 @@ class _RequestContext:
     async def __aenter__(self) -> ClientResponse:
         return await self._do_request()
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         if self._response is not None:
             if not self._response.closed:
                 self._response.close()
 
 
-def _url_to_urls(url: _URL_TYPE, attempts: int) -> Tuple[StrOrURL, ...]:
+def _url_to_urls(url: _URL_TYPE) -> Tuple[StrOrURL, ...]:
     if isinstance(url, str) or isinstance(url, YARL_URL):
-        return (url,) * attempts
+        return (url,)
 
     if isinstance(url, list):
         urls = tuple(url)
@@ -140,9 +172,6 @@ def _url_to_urls(url: _URL_TYPE, attempts: int) -> Tuple[StrOrURL, ...]:
 
     if len(urls) == 0:
         raise ValueError("you can pass url by str or list/tuple with attempts count size")
-
-    if len(urls) < attempts:
-        return urls + (urls[-1],) * (attempts - len(url))
 
     return urls
 
@@ -171,39 +200,21 @@ class RetryClient:
         self._retry_options: RetryOptionsBase = retry_options or ExponentialRetry()
         self._raise_for_status = raise_for_status
 
-    def __del__(self) -> None:
-        if getattr(self, '_closed', None) is None:
-            # in case object was not initialized (__init__ raised an exception)
-            return
-
-        if not self._closed:
-            self._logger.warning("Aiohttp retry client was not closed")
-
-    def _request(
-        self,
-        method: str,
-        url: _URL_TYPE,
-        retry_options: Optional[RetryOptionsBase] = None,
-        raise_for_status: Optional[bool] = None,
-        **kwargs: Any
-    ) -> _RequestContext:
-        if retry_options is None:
-            retry_options = self._retry_options
-        if raise_for_status is None:
-            raise_for_status = self._raise_for_status
-        return _RequestContext(
-            request=self._client.request,
-            method=method,
-            urls=_url_to_urls(url, retry_options.attempts),
-            logger=self._logger,
-            retry_options=retry_options,
-            raise_for_status=raise_for_status,
-            **kwargs
-        )
-
     @property
     def retry_options(self) -> RetryOptionsBase:
         return self._retry_options
+
+    def requests(
+        self,
+        params_list: List[RequestParams],
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+    ) -> _RequestContext:
+        return self._make_requests(
+            params_list=params_list,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+        )
 
     def request(
         self,
@@ -213,12 +224,12 @@ class RetryClient:
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(
+        return self._make_request(
             method=method,
             url=url,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs
+            **kwargs,
         )
 
     def get(
@@ -228,12 +239,12 @@ class RetryClient:
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(
+        return self._make_request(
             method=hdrs.METH_GET,
             url=url,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs
+            **kwargs,
         )
 
     def options(
@@ -243,12 +254,12 @@ class RetryClient:
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(
+        return self._make_request(
             method=hdrs.METH_OPTIONS,
             url=url,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs
+            **kwargs,
         )
 
     def head(
@@ -257,12 +268,12 @@ class RetryClient:
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None, **kwargs: Any
     ) -> _RequestContext:
-        return self._request(
+        return self._make_request(
             method=hdrs.METH_HEAD,
             url=url,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs
+            **kwargs,
         )
 
     def post(
@@ -272,12 +283,12 @@ class RetryClient:
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(
+        return self._make_request(
             method=hdrs.METH_POST,
             url=url,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs
+            **kwargs,
         )
 
     def put(
@@ -287,12 +298,12 @@ class RetryClient:
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(
+        return self._make_request(
             method=hdrs.METH_PUT,
             url=url,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs
+            **kwargs,
         )
 
     def patch(
@@ -302,12 +313,12 @@ class RetryClient:
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(
+        return self._make_request(
             method=hdrs.METH_PATCH,
             url=url,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs
+            **kwargs,
         )
 
     def delete(
@@ -317,20 +328,74 @@ class RetryClient:
         raise_for_status: Optional[bool] = None,
         **kwargs: Any
     ) -> _RequestContext:
-        return self._request(
+        return self._make_request(
             method=hdrs.METH_DELETE,
             url=url,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs
+            **kwargs,
         )
 
     async def close(self) -> None:
         await self._client.close()
         self._closed = True
 
+    def _make_request(
+        self,
+        method: str,
+        url: _URL_TYPE,
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> _RequestContext:
+        url_list = _url_to_urls(url)
+        params_list = [RequestParams(
+            method=method,
+            path=path,
+            trace_request_ctx=kwargs.pop('trace_request_ctx', None),
+            kwargs=kwargs,
+        ) for path in url_list]
+
+        return self._make_requests(
+            params_list=params_list,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+            **kwargs,
+        )
+
+    def _make_requests(
+        self,
+        params_list: List[RequestParams],
+        retry_options: Optional[RetryOptionsBase] = None,
+        raise_for_status: Optional[bool] = None,
+    ) -> _RequestContext:
+        if retry_options is None:
+            retry_options = self._retry_options
+        if raise_for_status is None:
+            raise_for_status = self._raise_for_status
+        return _RequestContext(
+            request_func=self._client.request,
+            params_list=params_list,
+            logger=self._logger,
+            retry_options=retry_options,
+            raise_for_status=raise_for_status,
+        )
+
     async def __aenter__(self) -> 'RetryClient':
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         await self.close()
+
+    def __del__(self) -> None:
+        if getattr(self, '_closed', None) is None:
+            # in case object was not initialized (__init__ raised an exception)
+            return
+
+        if not self._closed:
+            self._logger.warning("Aiohttp retry client was not closed")

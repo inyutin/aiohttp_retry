@@ -62,6 +62,31 @@ async def main():
             print(response.status)
 ```
 
+You can change parameters between attempts by passing multiple requests params:
+```python
+from aiohttp_retry import RetryClient, RequestParams, ExponentialRetry
+
+async def main():
+    retry_client = RetryClient(raise_for_status=False)
+
+    async with retry_client.requests(
+        params_list=[
+            RequestParams(
+                method='GET',
+                path='https://ya.ru',
+            ),
+            RequestParams(
+                method='GET',
+                path='https://ya.ru',
+                headers={'some_header': 'some_value'},
+            ),
+        ]
+    ) as response:
+        print(response.status)
+        
+    await retry_client.close()
+```
+
 You can also add some logic, F.E. logging, on failures by using trace mechanic.
 ```python
 import logging
@@ -106,6 +131,7 @@ Look tests for more examples. \
 ### Documentation
 `RetryClient` takes the same arguments as ClientSession[[docs](https://docs.aiohttp.org/en/stable/client_reference.html)] \
 `RetryClient` has methods:
+- request
 - get
 - options
 - head
@@ -158,8 +184,31 @@ It can be useful, if server API sometimes response with malformed data.
 `RetryClient` add *current attempt number* to `request_trace_ctx` (see examples, 
 for more info see [aiohttp doc](https://docs.aiohttp.org/en/stable/client_advanced.html#aiohttp-client-tracing)).
 
-### Change URL between retries
-You can change URL between retries by specifying ```url``` as list of urls. Example:
+### Change parameters between retries
+`RetryClient` also has a method called `requests`. This method should be used if you want to make requests with different params.
+```python
+@dataclass
+class RequestParams:
+    method: str
+    path: _RAW_URL_TYPE
+    trace_request_ctx: Optional[Dict[str, Any]] = None
+    kwargs: Optional[Dict[str, Any]] = None
+```
+
+```python
+def requests(
+    self,
+    params_list: List[RequestParams],
+    retry_options: Optional[RetryOptionsBase] = None,
+    raise_for_status: Optional[bool] = None,
+) -> _RequestContext:
+```
+
+You can find an example of usage above or in tests.  
+But basically `RequestParams` is a structure to define params for `ClientSession.request` func.  
+`method`, `path`, `headers` `trace_request_ctx` defined outside kwargs, because they are popular.  
+
+There is also an old way to change URL between retries by specifying ```url``` as list of urls. Example:
 ```python
 from aiohttp_retry import RetryClient
 

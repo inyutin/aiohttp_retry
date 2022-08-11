@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 
 import pytest
 from aiohttp import (
+    BasicAuth,
     ClientResponse,
     ClientResponseError,
     ClientSession,
@@ -433,5 +434,17 @@ async def test_change_headers(aiohttp_client):
         assert text == 'Ok!'
 
         assert test_app.counter == 2
+
+    await retry_client.close()
+
+
+async def test_additional_params(aiohttp_client):
+    # https://github.com/inyutin/aiohttp_retry/issues/79
+    auth = BasicAuth("username", "password")
+    retry_client, _ = await get_retry_client_and_test_app_for_test(aiohttp_client)
+    async with retry_client.request(hdrs.METH_GET, '/with_auth', auth=auth) as response:
+        text = await response.text()
+        assert response.status == 200
+        assert text == 'Ok!'
 
     await retry_client.close()

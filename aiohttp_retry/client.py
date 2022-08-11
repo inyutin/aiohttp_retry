@@ -222,7 +222,7 @@ class RetryClient:
         url: StrOrURL,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> _RequestContext:
         return self._make_request(
             method=method,
@@ -237,7 +237,7 @@ class RetryClient:
         url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> _RequestContext:
         return self._make_request(
             method=hdrs.METH_GET,
@@ -252,7 +252,7 @@ class RetryClient:
         url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> _RequestContext:
         return self._make_request(
             method=hdrs.METH_OPTIONS,
@@ -266,7 +266,7 @@ class RetryClient:
         self,
         url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
-        raise_for_status: Optional[bool] = None, **kwargs: Any
+        raise_for_status: Optional[bool] = None, **kwargs: Any,
     ) -> _RequestContext:
         return self._make_request(
             method=hdrs.METH_HEAD,
@@ -281,7 +281,7 @@ class RetryClient:
         url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> _RequestContext:
         return self._make_request(
             method=hdrs.METH_POST,
@@ -296,7 +296,7 @@ class RetryClient:
         url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> _RequestContext:
         return self._make_request(
             method=hdrs.METH_PUT,
@@ -311,7 +311,7 @@ class RetryClient:
         url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> _RequestContext:
         return self._make_request(
             method=hdrs.METH_PATCH,
@@ -326,7 +326,7 @@ class RetryClient:
         url: _URL_TYPE,
         retry_options: Optional[RetryOptionsBase] = None,
         raise_for_status: Optional[bool] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> _RequestContext:
         return self._make_request(
             method=hdrs.METH_DELETE,
@@ -360,7 +360,6 @@ class RetryClient:
             params_list=params_list,
             retry_options=retry_options,
             raise_for_status=raise_for_status,
-            **kwargs,
         )
 
     def _make_requests(

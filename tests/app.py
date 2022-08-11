@@ -12,6 +12,7 @@ class App:
         app.router.add_get('/sometimes_error', self.sometimes_error)
         app.router.add_get('/sometimes_json', self.sometimes_json)
         app.router.add_get('/check_headers', self.check_headers)
+        app.router.add_get('/with_auth', self.with_auth)
 
         app.router.add_options('/options_handler', self.ping_handler)
         app.router.add_head('/head_handler', self.ping_handler)
@@ -53,6 +54,12 @@ class App:
         if request.headers.get('correct_headers') != 'True':
             raise web.HTTPNotAcceptable()
 
+        return web.Response(text='Ok!', status=200)
+
+    async def with_auth(self, request: web.Request) -> web.Response:
+        # BasicAuth("username", "password")
+        if request.headers.get('Authorization') != 'Basic dXNlcm5hbWU6cGFzc3dvcmQ=':
+            return web.Response(text='incorrect auth', status=403)
         return web.Response(text='Ok!', status=200)
 
     @property

@@ -10,6 +10,9 @@ Python 3.7 or higher.
 
 
 ### Breaking API changes
+- 2.8.0 is incorrect and yanked.
+https://github.com/inyutin/aiohttp_retry/issues/79
+
 - Since 2.5.6 this is a new parameter in ```get_timeout``` func called "response".  
 If you have defined your own ```RetryOptions```, you should add this param into it.
 Issue about this: https://github.com/inyutin/aiohttp_retry/issues/59

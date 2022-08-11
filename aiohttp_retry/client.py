@@ -121,7 +121,7 @@ class _RequestContext:
                     else:
                         is_response_correct = True
 
-                    if is_response_correct:
+                    if is_response_correct or current_attempt == self._retry_options.attempts:
                         self._response = response
                         return response
                     else:

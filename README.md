@@ -10,6 +10,9 @@ Python 3.7 or higher.
 
 
 ### Breaking API changes
+- Everything between [2.7.0 - 2.8.3) is yanked.  
+There is a bug with evaluate_response_callback, it led to infinite retries
+
 - 2.8.0 is incorrect and yanked.
 https://github.com/inyutin/aiohttp_retry/issues/79
 

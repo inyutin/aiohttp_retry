@@ -107,8 +107,15 @@ class ListRetry(RetryOptionsBase):
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
         retry_all_server_errors: bool = True,
+        evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
     ):
-        super().__init__(len(timeouts), statuses, exceptions, retry_all_server_errors)
+        super().__init__(
+            attempts=len(timeouts),
+            statuses=statuses,
+            exceptions=exceptions,
+            retry_all_server_errors=retry_all_server_errors,
+            evaluate_response_callback=evaluate_response_callback,
+        )
         self.timeouts = timeouts
 
     def get_timeout(self, attempt: int, response: Optional[ClientResponse] = None) -> float:

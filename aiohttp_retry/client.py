@@ -125,7 +125,6 @@ class _RequestContext:
                 else:
                     retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=response)
 
-
             except Exception as e:
 
                 if current_attempt >= self._retry_options.attempts:

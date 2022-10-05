@@ -80,13 +80,18 @@ class _RequestContext:
 
         self._response: Optional[ClientResponse] = None
 
-    def _is_status_code_ok(self, code: int) -> bool:
-        if code >= 500 and self._retry_options.retry_all_server_errors:
-            return False
-        return code not in self._retry_options.statuses
+    async def _skip_retry(self, response: ClientResponse) -> bool:
+        skip_retry = False
+        if response.status >= 500 and self._retry_options.retry_all_server_errors:
+            return skip_retry
+        elif response.status not in self._retry_options.statuses:
+            skip_retry = (self._retry_options.evaluate_response_callback is None
+                          or await self._retry_options.evaluate_response_callback(response))
+        return skip_retry
 
     async def _do_request(self) -> ClientResponse:
         current_attempt = 0
+
         while True:
             self._logger.debug(f"Attempt {current_attempt+1} out of {self._retry_options.attempts}")
 
@@ -108,28 +113,21 @@ class _RequestContext:
                     **(params.kwargs or {}),
                 )
 
-                if self._is_status_code_ok(response.status) or current_attempt == self._retry_options.attempts:
+                retry_message = f"Retrying after response code: {response.status}"
+                skip_retry = (current_attempt == self._retry_options.attempts
+                              or await self._skip_retry(response))
+
+                if skip_retry:
                     if self._raise_for_status:
                         response.raise_for_status()
-
-                    if self._retry_options.evaluate_response_callback is not None:
-                        try:
-                            is_response_correct = await self._retry_options.evaluate_response_callback(response)
-                        except Exception:
-                            self._logger.exception('while evaluating response an exception occurred')
-                            is_response_correct = False
-                    else:
-                        is_response_correct = True
-
-                    if is_response_correct or current_attempt == self._retry_options.attempts:
-                        self._response = response
-                        return response
-                    else:
-                        self._logger.debug(f"Retrying after evaluate response callback check")
+                    self._response = response
+                    return self._response
                 else:
-                    self._logger.debug(f"Retrying after response code: {response.status}")
-                retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=response)
+                    retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=response)
+
+
             except Exception as e:
+
                 if current_attempt >= self._retry_options.attempts:
                     raise e
 
@@ -137,9 +135,10 @@ class _RequestContext:
                 if not is_exc_valid:
                     raise e
 
-                self._logger.debug(f"Retrying after exception: {repr(e)}")
+                retry_message = f"Retrying after exception: {repr(e)}"
                 retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=None)
 
+            self._logger.debug(retry_message)
             await asyncio.sleep(retry_wait)
 
     def __await__(self) -> Generator[Any, None, ClientResponse]:

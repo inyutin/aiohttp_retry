@@ -81,7 +81,6 @@ class _RequestContext:
         self._response: Optional[ClientResponse] = None
 
     async def _is_skip_retry(self, current_attempt: int, response: ClientResponse) -> bool:
-
         if current_attempt == self._retry_options.attempts:
             return True
 

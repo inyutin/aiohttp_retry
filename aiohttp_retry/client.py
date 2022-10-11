@@ -80,14 +80,21 @@ class _RequestContext:
 
         self._response: Optional[ClientResponse] = None
 
-    async def _skip_retry(self, response: ClientResponse) -> bool:
-        skip_retry = False
+    async def _is_skip_retry(self, current_attempt, response: ClientResponse) -> bool:
+
+        if current_attempt == self._retry_options.attempts:
+            return True
+
         if response.status >= 500 and self._retry_options.retry_all_server_errors:
-            return skip_retry
-        elif response.status not in self._retry_options.statuses:
-            skip_retry = (self._retry_options.evaluate_response_callback is None
-                          or await self._retry_options.evaluate_response_callback(response))
-        return skip_retry
+            return False
+
+        if response.status in self._retry_options.statuses:
+            return False
+
+        if self._retry_options.evaluate_response_callback is None:
+            return True
+
+        return await self._retry_options.evaluate_response_callback(response)
 
     async def _do_request(self) -> ClientResponse:
         current_attempt = 0
@@ -113,9 +120,8 @@ class _RequestContext:
                     **(params.kwargs or {}),
                 )
 
-                retry_message = f"Retrying after response code: {response.status}"
-                skip_retry = (current_attempt == self._retry_options.attempts
-                              or await self._skip_retry(response))
+                debug_message = f"Retrying after response code: {response.status}"
+                skip_retry = await self._is_skip_retry(current_attempt, response)
 
                 if skip_retry:
                     if self._raise_for_status:
@@ -126,7 +132,6 @@ class _RequestContext:
                     retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=response)
 
             except Exception as e:
-
                 if current_attempt >= self._retry_options.attempts:
                     raise e
 
@@ -134,10 +139,10 @@ class _RequestContext:
                 if not is_exc_valid:
                     raise e
 
-                retry_message = f"Retrying after exception: {repr(e)}"
+                debug_message = f"Retrying after exception: {repr(e)}"
                 retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=None)
 
-            self._logger.debug(retry_message)
+            self._logger.debug(debug_message)
             await asyncio.sleep(retry_wait)
 
     def __await__(self) -> Generator[Any, None, ClientResponse]:

@@ -50,7 +50,7 @@ async def main():
 from aiohttp_retry import RetryClient, RandomRetry
 
 async def main():
-    retry_options = RandomRetry(attempts=1)
+    retry_options = RandomRetry(attempts=1, exceptions={Exception})
     retry_client = RetryClient(raise_for_status=False, retry_options=retry_options)
 
     response = await retry_client.get('/ping')
@@ -154,7 +154,7 @@ class RetryOptionsBase:
         self,
         attempts: int = 3,  # How many times we should retry
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
-        exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+        exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry. To rety on all exceptions, pass exceptions={Exception}
         retry_all_server_errors: bool = True,  # If should retry all 500 errors or not
         # a callback that will run on response to decide if retry
         evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,

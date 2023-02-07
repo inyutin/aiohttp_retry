@@ -233,7 +233,7 @@ This means that in example above we would request ```/ping``` once again in case
 
 ### Types
 
-`aiohttp_retry` is a typed project. It should be fully compatablie with mypy.
+`aiohttp_retry` is a typed project. It should be fully compatible with mypy.
 
 It also introduce one special type:
 ```

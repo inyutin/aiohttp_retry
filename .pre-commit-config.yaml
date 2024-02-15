@@ -1,17 +1,4 @@
 repos:
--   repo: https://github.com/pycqa/isort
-    rev: 5.10.1
-    hooks:
-      - id: isort
-        files: 'aiohttp_retry/.*'
-        stages:
-        - commit
-        - push
-      - id: isort
-        files: 'tests/.*'
-        stages:
-        - commit
-        - push
 -   repo: https://github.com/pre-commit/mirrors-autopep8
     rev: 'v1.6.0'  # Use the sha / tag you want to point at
     hooks:

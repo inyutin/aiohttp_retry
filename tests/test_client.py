@@ -475,3 +475,12 @@ async def test_list_retry_all_failed(aiohttp_client):
         assert test_app.counter == 3
 
     await retry_client.close()
+
+async def test_skip_retry_on_methods(aiohttp_client):
+    retry_options = ExponentialRetry(attempts=3, methods={'GET'})
+    retry_client, _ = await get_retry_client_and_test_app_for_test(aiohttp_client, retry_options=retry_options)
+    async with retry_client.post('/internal_error') as response:
+        assert response.method == hdrs.METH_POST
+        assert response.status == 500
+
+    await retry_client.close()

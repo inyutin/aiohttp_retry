@@ -21,6 +21,8 @@ class App:
         app.router.add_patch('/patch_handler', self.ping_handler)
         app.router.add_delete('/delete_handler', self.ping_handler)
 
+        app.router.add_post('/internal_error', self.internal_error_handler)
+
         self._web_app = app
 
     async def ping_handler(self, _: web.Request) -> web.Response:

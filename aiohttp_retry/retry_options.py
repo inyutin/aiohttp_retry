@@ -13,6 +13,7 @@ class RetryOptionsBase:
         self,
         attempts: int = 3,  # How many times we should retry
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
+        methods: Optional[Iterable[str]] = None,  # On which HTTP methods we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
         retry_all_server_errors: bool = True,    # If should retry all 500 errors or not
         # a callback that will run on response to decide if retry
@@ -26,6 +27,10 @@ class RetryOptionsBase:
         if exceptions is None:
             exceptions = set()
         self.exceptions: Iterable[Type[Exception]] = exceptions
+
+        if methods is None:
+            methods = {"HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST", "PUT", "CONNECT", "PATCH"}
+        self.methods: Iterable[str] = methods
 
         self.retry_all_server_errors = retry_all_server_errors
         self.evaluate_response_callback = evaluate_response_callback
@@ -43,6 +48,7 @@ class ExponentialRetry(RetryOptionsBase):
         max_timeout: float = 30.0,  # Max possible timeout between tries
         factor: float = 2.0,  # How much we increase timeout each time
         statuses: Optional[Set[int]] = None,  # On which statuses we should retry
+        methods: Optional[Iterable[str]] = None,  # On which HTTP methods we should retry
         exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
         retry_all_server_errors: bool = True,
         evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
@@ -50,6 +56,7 @@ class ExponentialRetry(RetryOptionsBase):
         super().__init__(
             attempts=attempts,
             statuses=statuses,
+            methods=methods,
             exceptions=exceptions,
             retry_all_server_errors=retry_all_server_errors,
             evaluate_response_callback=evaluate_response_callback,
@@ -75,6 +82,7 @@ class RandomRetry(RetryOptionsBase):
         self,
         attempts: int = 3,  # How many times we should retry
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
+        methods: Optional[Iterable[str]] = None,  # On which HTTP methods we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
         min_timeout: float = 0.1,  # Minimum possible timeout
         max_timeout: float = 3.0,  # Maximum possible timeout between tries
@@ -85,6 +93,7 @@ class RandomRetry(RetryOptionsBase):
         super().__init__(
             attempts=attempts,
             statuses=statuses,
+            methods=methods,
             exceptions=exceptions,
             retry_all_server_errors=retry_all_server_errors,
             evaluate_response_callback=evaluate_response_callback,
@@ -105,6 +114,7 @@ class ListRetry(RetryOptionsBase):
         self,
         timeouts: List[float],
         statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
+        methods: Optional[Iterable[str]] = None,  # On which HTTP methods we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
         retry_all_server_errors: bool = True,
         evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
@@ -112,6 +122,7 @@ class ListRetry(RetryOptionsBase):
         super().__init__(
             attempts=len(timeouts),
             statuses=statuses,
+            methods=methods,
             exceptions=exceptions,
             retry_all_server_errors=retry_all_server_errors,
             evaluate_response_callback=evaluate_response_callback,
@@ -129,6 +140,7 @@ class FibonacciRetry(RetryOptionsBase):
         attempts: int = 3,
         multiplier: float = 1.0,
         statuses: Optional[Iterable[int]] = None,
+        methods: Optional[Iterable[str]] = None,  # On which HTTP methods we should retry
         exceptions: Optional[Iterable[Type[Exception]]] = None,
         max_timeout: float = 3.0,  # Maximum possible timeout between tries
         retry_all_server_errors: bool = True,
@@ -137,6 +149,7 @@ class FibonacciRetry(RetryOptionsBase):
         super().__init__(
             attempts=attempts,
             statuses=statuses,
+            methods=methods,
             exceptions=exceptions,
             retry_all_server_errors=retry_all_server_errors,
             evaluate_response_callback=evaluate_response_callback,
@@ -165,6 +178,7 @@ class JitterRetry(ExponentialRetry):
         max_timeout: float = 30.0,  # Max possible timeout between tries
         factor: float = 2.0,  # How much we increase timeout each time
         statuses: Optional[Set[int]] = None,  # On which statuses we should retry
+        methods: Optional[Iterable[str]] = None,  # On which HTTP methods we should retry
         exceptions: Optional[Set[Type[Exception]]] = None,  # On which exceptions we should retry
         random_interval_size: float = 2.0,  # size of interval for random component
         retry_all_server_errors: bool = True,
@@ -176,6 +190,7 @@ class JitterRetry(ExponentialRetry):
             max_timeout=max_timeout,
             factor=factor,
             statuses=statuses,
+            methods=methods,
             exceptions=exceptions,
             retry_all_server_errors=retry_all_server_errors,
             evaluate_response_callback=evaluate_response_callback,

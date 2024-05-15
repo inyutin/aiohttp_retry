@@ -90,6 +90,9 @@ class _RequestContext:
         if response.status in self._retry_options.statuses:
             return False
 
+        if response.method not in self._retry_options.methods:
+            return True
+
         if self._retry_options.evaluate_response_callback is None:
             return True
 

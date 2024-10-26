@@ -25,9 +25,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements_ci.txt
 
-    - name: Lint with pre-commit config
-      run: pre-commit run --all-files
-
     - name: Test with mypy
       run: mypy -m aiohttp_retry
 

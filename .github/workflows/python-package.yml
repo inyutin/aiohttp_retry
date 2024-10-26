@@ -36,15 +36,4 @@ jobs:
     - name: Test with pytest
       env:
         PYTHONPATH: .
-      run: pytest --cov=./ --cov-report=xml --asyncio-mode=auto
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./coverage.xml
-        flags: pytest
-        env_vars: OS,PYTHON
-        name: codecov-umbrella
-        fail_ci_if_error: true
-        verbose: true
+      run: pytest --asyncio-mode=auto

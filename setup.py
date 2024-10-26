@@ -1,14 +1,13 @@
 from setuptools import find_packages, setup
 
-
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
 
 setup(
-    name='aiohttp_retry',
-    version='2.8.3',
-    description='Simple retry client for aiohttp',
+    name="aiohttp_retry",
+    version="2.8.3",
+    description="Simple retry client for aiohttp",
     long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers=[
@@ -16,19 +15,19 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    keywords='aiohttp retry client',
-    author='Dmitry Inyutin',
-    author_email='inyutin.da@gmail.com',
-    url='https://github.com/inyutin/aiohttp_retry',
-    license='MIT',
+    keywords="aiohttp retry client",
+    author="Dmitry Inyutin",
+    author_email="inyutin.da@gmail.com",
+    url="https://github.com/inyutin/aiohttp_retry",
+    license="MIT",
     include_package_data=True,
     packages=find_packages(exclude=["tests", "tests.*"]),
-    platforms=['any'],
-    python_requires='>=3.7',
+    platforms=["any"],
+    python_requires=">=3.7",
     install_requires=[
-        'aiohttp',
+        "aiohttp",
     ],
     package_data={
         "aiohttp_retry": ["py.typed"],
-    }
+    },
 )

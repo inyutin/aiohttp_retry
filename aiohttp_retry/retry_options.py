@@ -15,7 +15,7 @@ class RetryOptionsBase:
         self,
         attempts: int = 3,  # How many times we should retry
         statuses: Iterable[int] | None = None,  # On which statuses we should retry
-        exceptions: Iterable[type[Exception]] | None = None,  # On which exceptions we should retry
+        exceptions: Iterable[type[Exception]] | None = None,  # On which exceptions we should retry, by default on all
         retry_all_server_errors: bool = True,  # If should retry all 500 errors or not
         # a callback that will run on response to decide if retry
         evaluate_response_callback: EvaluateResponseCallbackType | None = None,

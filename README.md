@@ -151,11 +151,11 @@ class RetryOptionsBase:
     def __init__(
         self,
         attempts: int = 3,  # How many times we should retry
-        statuses: Optional[Iterable[int]] = None,  # On which statuses we should retry
-        exceptions: Optional[Iterable[Type[Exception]]] = None,  # On which exceptions we should retry
+        statuses: Iterable[int] | None = None,  # On which statuses we should retry
+        exceptions: Iterable[type[Exception]] | None = None,  # On which exceptions we should retry, by default on all
         retry_all_server_errors: bool = True,  # If should retry all 500 errors or not
         # a callback that will run on response to decide if retry
-        evaluate_response_callback: Optional[EvaluateResponseCallbackType] = None,
+        evaluate_response_callback: EvaluateResponseCallbackType | None = None,
     ):
         ...
 
@@ -195,16 +195,17 @@ for more info see [aiohttp doc](https://docs.aiohttp.org/en/stable/client_advanc
 class RequestParams:
     method: str
     url: _RAW_URL_TYPE
-    trace_request_ctx: Optional[Dict[str, Any]] = None
-    kwargs: Optional[Dict[str, Any]] = None
+    headers: dict[str, Any] | None = None
+    trace_request_ctx: dict[str, Any] | None = None
+    kwargs: dict[str, Any] | None = None
 ```
 
 ```python
 def requests(
     self,
-    params_list: List[RequestParams],
-    retry_options: Optional[RetryOptionsBase] = None,
-    raise_for_status: Optional[bool] = None,
+    params_list: list[RequestParams],
+    retry_options: RetryOptionsBase | None = None,
+    raise_for_status: bool | None = None,
 ) -> _RequestContext:
 ```
 

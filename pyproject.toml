@@ -54,3 +54,6 @@ unfixable = ["FBT002"]
     "S101",     # Use of assert detected
     "SLF001",   # Private member accessed
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

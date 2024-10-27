@@ -1,8 +1,6 @@
 name: Publish package to PyPI
 
 on:
-  push:
-    branches: [master]
   release:
     types: [ released ]
 
@@ -10,7 +8,7 @@ on:
 jobs:
   build-n-publish:
     name: Build and publish Python package to PyPI
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
       - name: Set up Python 3.7

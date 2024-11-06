@@ -349,7 +349,18 @@ async def test_list_retry_works_for_multiple_attempts(aiohttp_client: pytest_aio
 async def test_dont_retry_if_not_in_retry_methods(aiohttp_client: pytest_aiohttp.plugin.AiohttpClient) -> None:
     retry_client, test_app = await get_retry_client_and_test_app_for_test(
         aiohttp_client,
-        retry_options=ExponentialRetry(methods={"POST"}),  # not "GET"
+        retry_options=ExponentialRetry(),  # try on all methods by default
+    )
+
+    async with retry_client.get("/internal_error") as response:
+        assert response.status == 500
+        assert test_app.counter == 3
+
+    await retry_client.close()
+
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(
+        aiohttp_client,
+        retry_options=ExponentialRetry(methods={"POST"}),  # try on only POST method
     )
 
     async with retry_client.get("/internal_error") as response:

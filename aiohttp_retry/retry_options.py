@@ -32,7 +32,7 @@ class RetryOptionsBase:
 
         if methods is None:
             methods = {"HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST", "CONNECT", "PATCH"}
-        self.methods: Iterable[str] = methods
+        self.methods: Iterable[str] = {method.upper() for method in methods}
 
         self.retry_all_server_errors = retry_all_server_errors
         self.evaluate_response_callback = evaluate_response_callback

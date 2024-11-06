@@ -89,7 +89,7 @@ class _RequestContext:
         if current_attempt == self._retry_options.attempts:
             return True
 
-        if response.method not in self._retry_options.methods:
+        if response.method.upper() not in self._retry_options.methods:
             return True
 
         if response.status >= _MIN_SERVER_ERROR_STATUS and self._retry_options.retry_all_server_errors:

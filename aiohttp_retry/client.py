@@ -120,6 +120,7 @@ class _RequestContext:
                     params.method,
                     params.url,
                     headers=params.headers,
+                    raise_for_status=self._raise_for_status,
                     trace_request_ctx={
                         "current_attempt": current_attempt,
                         **(params.trace_request_ctx or {}),

@@ -27,7 +27,7 @@ class RetryOptionsBase:
         self.statuses: Iterable[int] = statuses
 
         if exceptions is None:
-            exceptions = set()
+            exceptions = {Exception}
         self.exceptions: Iterable[type[Exception]] = exceptions
 
         if methods is None:

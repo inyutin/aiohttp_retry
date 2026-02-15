@@ -73,7 +73,7 @@ class _RequestContext:
         params_list: list[RequestParams],
         logger: _LoggerType,
         retry_options: RetryOptionsBase,
-        raise_for_status: bool = False,
+        raise_for_status: bool | None = None,
     ) -> None:
         assert len(params_list) > 0  # noqa: S101
 
@@ -124,6 +124,7 @@ class _RequestContext:
                         "current_attempt": current_attempt,
                         **(params.trace_request_ctx or {}),
                     },
+                    **({"raise_for_status": self._raise_for_status} if self._raise_for_status is not None else {}),
                     **(params.kwargs or {}),
                 )
 
@@ -192,7 +193,7 @@ class RetryClient:
         client_session: ClientSession | None = None,
         logger: _LoggerType | None = None,
         retry_options: RetryOptionsBase | None = None,
-        raise_for_status: bool = False,
+        raise_for_status: bool | None = None,
         *args: Any,
         **kwargs: Any,
     ) -> None:

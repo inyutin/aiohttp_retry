@@ -107,7 +107,7 @@ class _RequestContext:
         current_attempt = 0
 
         while True:
-            self._logger.debug(f"Attempt {current_attempt+1} out of {self._retry_options.attempts}")
+            self._logger.debug(f"Attempt {current_attempt + 1} out of {self._retry_options.attempts}")
 
             current_attempt += 1
             try:

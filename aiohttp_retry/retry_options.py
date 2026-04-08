@@ -27,9 +27,7 @@ class RetryOptionsBase:
             statuses = set()
         self.statuses: Iterable[int] = statuses
 
-        if exceptions is None:
-            exceptions = set()
-        self.exceptions: Iterable[type[Exception]] = exceptions
+        self.exceptions: Iterable[type[Exception]] | None = exceptions
 
         if methods is None:
             methods = {"HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE", "POST", "CONNECT", "PATCH"}

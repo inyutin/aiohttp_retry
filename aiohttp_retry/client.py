@@ -132,7 +132,10 @@ class _RequestContext:
                 if current_attempt >= self._retry_options.attempts:
                     raise
 
-                is_exc_valid = any(isinstance(e, exc) for exc in self._retry_options.exceptions)
+                is_exc_valid = (
+                    self._retry_options.exceptions is None
+                    or any(isinstance(e, exc) for exc in self._retry_options.exceptions)
+                )
                 if not is_exc_valid:
                     raise
 

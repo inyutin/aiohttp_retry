@@ -39,7 +39,12 @@ class RetryOptionsBase:
         self.evaluate_response_callback = evaluate_response_callback
 
     @abc.abstractmethod
-    def get_timeout(self, attempt: int, response: ClientResponse | None = None) -> float:
+    def get_timeout(
+        self,
+        attempt: int,
+        response: ClientResponse | None = None,
+        start_time: float | None = None,
+    ) -> float:
         raise NotImplementedError
 
 
@@ -73,6 +78,7 @@ class ExponentialRetry(RetryOptionsBase):
         self,
         attempt: int,
         response: ClientResponse | None = None,  # noqa: ARG002
+        start_time: float | None = None,  # noqa: ARG002
     ) -> float:
         """Return timeout with exponential backoff."""
         timeout = self._start_timeout * (self._factor**attempt)
@@ -115,6 +121,7 @@ class RandomRetry(RetryOptionsBase):
         self,
         attempt: int,  # noqa: ARG002
         response: ClientResponse | None = None,  # noqa: ARG002
+        start_time: float | None = None,  # noqa: ARG002
     ) -> float:
         """Generate random timeouts."""
         return self.min_timeout + self.random() * (self.max_timeout - self.min_timeout)
@@ -144,6 +151,7 @@ class ListRetry(RetryOptionsBase):
         self,
         attempt: int,
         response: ClientResponse | None = None,  # noqa: ARG002
+        start_time: float | None = None,  # noqa: ARG002
     ) -> float:
         """Timeouts from a defined list."""
         return self.timeouts[attempt]
@@ -179,6 +187,7 @@ class FibonacciRetry(RetryOptionsBase):
         self,
         attempt: int,  # noqa: ARG002
         response: ClientResponse | None = None,  # noqa: ARG002
+        start_time: float | None = None,  # noqa: ARG002
     ) -> float:
         new_current_step = self.prev_step + self.current_step
         self.prev_step = self.current_step
@@ -224,6 +233,7 @@ class JitterRetry(ExponentialRetry):
         self,
         attempt: int,
         response: ClientResponse | None = None,  # noqa: ARG002
+        start_time: float | None = None,  # noqa: ARG002
     ) -> float:
-        timeout: float = super().get_timeout(attempt) + random.uniform(0, self._random_interval_size) ** self._factor
+        timeout: float = super().get_timeout(attempt, response, start_time) + random.uniform(0, self._random_interval_size) ** self._factor
         return timeout

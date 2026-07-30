@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from abc import abstractmethod
 from collections.abc import Awaitable, Callable, Generator
 from dataclasses import dataclass
@@ -96,6 +97,7 @@ class _RequestContext:
 
     async def _do_request(self) -> ClientResponse:
         current_attempt = 0
+        start_time = time.monotonic()
 
         while True:
             self._logger.debug(f"Attempt {current_attempt+1} out of {self._retry_options.attempts}")
@@ -126,7 +128,9 @@ class _RequestContext:
                         response.raise_for_status()
                     self._response = response
                     return self._response
-                retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=response)
+                retry_wait = self._retry_options.get_timeout(
+                    attempt=current_attempt, response=response, start_time=start_time,
+                )
 
             except Exception as e:
                 if current_attempt >= self._retry_options.attempts:
@@ -137,7 +141,9 @@ class _RequestContext:
                     raise
 
                 debug_message = f"Retrying after exception: {e!r}"
-                retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=None)
+                retry_wait = self._retry_options.get_timeout(
+                    attempt=current_attempt, response=None, start_time=start_time,
+                )
 
             self._logger.debug(debug_message)
             await asyncio.sleep(retry_wait)

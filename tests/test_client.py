@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
@@ -9,9 +10,13 @@ from aiohttp import (
     ClientResponse,
     ClientResponseError,
     ClientSession,
+    ClientTimeout,
+    TCPConnector,
     TraceConfig,
+    TraceRequestEndParams,
     TraceRequestStartParams,
     hdrs,
+    web,
 )
 from yarl import URL
 
@@ -20,9 +25,153 @@ from aiohttp_retry.client import RequestParams
 from tests.app import App
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     import pytest_aiohttp.plugin
 
     from aiohttp_retry.retry_options import RetryOptionsBase
+
+
+@pytest.fixture
+async def streaming_retry_client(
+    aiohttp_client: pytest_aiohttp.plugin.AiohttpClient,
+) -> AsyncIterator[tuple[RetryClient, list[ClientResponse]]]:
+    finish_stream = asyncio.Event()
+    responses: list[ClientResponse] = []
+
+    async def stream(request: web.Request) -> web.StreamResponse:
+        if responses:
+            return web.Response(text="Ok!")
+
+        response = web.StreamResponse(status=int(request.match_info["status"]))
+        await response.prepare(request)
+        await response.write(b"retry-body")
+        await finish_stream.wait()
+        return response
+
+    async def record_response(
+        _: ClientSession,
+        __: SimpleNamespace,
+        params: TraceRequestEndParams,
+    ) -> None:
+        responses.append(params.response)
+
+    app = web.Application()
+    app.router.add_get("/stream/{status}", stream)
+    trace_config = TraceConfig()
+    trace_config.on_request_end.append(record_response)
+    client = await aiohttp_client(
+        app,
+        connector=TCPConnector(limit=1),
+        timeout=ClientTimeout(total=1),
+        trace_configs=[trace_config],
+    )
+    retry_client = RetryClient(client_session=client)
+    try:
+        yield retry_client, responses
+    finally:
+        finish_stream.set()
+        await retry_client.close()
+
+
+@pytest.mark.parametrize("status", [500, 429, 200])
+async def test_release_streaming_response_before_retry(
+    streaming_retry_client: tuple[RetryClient, list[ClientResponse]],
+    status: int,
+) -> None:
+    retry_client, responses = streaming_retry_client
+
+    async def evaluate_response(_: ClientResponse) -> bool:
+        return False
+
+    retry_options = ExponentialRetry(
+        attempts=2,
+        start_timeout=0,
+        statuses={429},
+        evaluate_response_callback=evaluate_response,
+    )
+    async with retry_client.get(f"/stream/{status}", retry_options=retry_options) as response:
+        assert response.status == 200
+        assert await response.text() == "Ok!"
+        assert len(responses) == 2
+        assert responses[0].closed
+
+
+@pytest.mark.parametrize("retry_on_error", [False, True])
+async def test_release_streaming_response_on_callback_error(
+    streaming_retry_client: tuple[RetryClient, list[ClientResponse]],
+    retry_on_error: bool,
+) -> None:
+    retry_client, responses = streaming_retry_client
+    error = ValueError("response check failed")
+
+    async def evaluate_response(_: ClientResponse) -> bool:
+        raise error
+
+    retry_options = ExponentialRetry(
+        attempts=2,
+        start_timeout=0,
+        exceptions={ValueError} if retry_on_error else set(),
+        evaluate_response_callback=evaluate_response,
+    )
+    if retry_on_error:
+        async with retry_client.get("/stream/200", retry_options=retry_options) as response:
+            assert await response.text() == "Ok!"
+    else:
+        with pytest.raises(ValueError, match="response check failed") as exc_info:
+            await retry_client.get("/stream/200", retry_options=retry_options)
+        assert exc_info.value is error
+        assert responses[0].closed
+
+        async with retry_client.get("/stream/200") as response:
+            assert await response.text() == "Ok!"
+
+    assert responses[0].closed
+
+
+async def test_release_streaming_response_on_callback_cancellation(
+    streaming_retry_client: tuple[RetryClient, list[ClientResponse]],
+) -> None:
+    retry_client, responses = streaming_retry_client
+    evaluating_response = asyncio.Event()
+    resume_callback = asyncio.Event()
+
+    async def evaluate_response(_: ClientResponse) -> bool:
+        evaluating_response.set()
+        await resume_callback.wait()
+        return True
+
+    retry_options = ExponentialRetry(evaluate_response_callback=evaluate_response)
+
+    async def request() -> ClientResponse:
+        return await retry_client.get("/stream/200", retry_options=retry_options)
+
+    task = asyncio.create_task(request())
+    try:
+        await asyncio.wait_for(evaluating_response.wait(), timeout=1)
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    assert responses[0].closed
+    async with retry_client.get("/stream/200") as response:
+        assert await response.text() == "Ok!"
+
+
+@pytest.mark.parametrize("status", [200, 500])
+async def test_returned_streaming_response_stays_open(
+    streaming_retry_client: tuple[RetryClient, list[ClientResponse]],
+    status: int,
+) -> None:
+    retry_client, responses = streaming_retry_client
+    retry_options = ExponentialRetry(attempts=1)
+    async with retry_client.get(f"/stream/{status}", retry_options=retry_options) as response:
+        assert response is responses[0]
+        assert not response.closed
+        assert await response.content.readexactly(len(b"retry-body")) == b"retry-body"
+
+    assert response.closed
 
 
 async def get_retry_client_and_test_app_for_test(

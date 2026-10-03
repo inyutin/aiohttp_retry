@@ -101,13 +101,14 @@ class _RequestContext:
             self._logger.debug(f"Attempt {current_attempt+1} out of {self._retry_options.attempts}")
 
             current_attempt += 1
+            response: ClientResponse | None = None
             try:
                 try:
                     params = self._params_list[current_attempt - 1]
                 except IndexError:
                     params = self._params_list[-1]
 
-                response: ClientResponse = await self._request_func(
+                response = await self._request_func(
                     params.method,
                     params.url,
                     headers=params.headers,
@@ -125,6 +126,7 @@ class _RequestContext:
                     if self._raise_for_status:
                         response.raise_for_status()
                     self._response = response
+                    response = None
                     return self._response
                 retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=response)
 
@@ -138,6 +140,9 @@ class _RequestContext:
 
                 debug_message = f"Retrying after exception: {e!r}"
                 retry_wait = self._retry_options.get_timeout(attempt=current_attempt, response=None)
+            finally:
+                if response is not None:
+                    response.close()
 
             self._logger.debug(debug_message)
             await asyncio.sleep(retry_wait)

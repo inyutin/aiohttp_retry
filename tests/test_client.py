@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from unittest.mock import patch
 
 import pytest
 from aiohttp import (
@@ -12,10 +14,11 @@ from aiohttp import (
     TraceConfig,
     TraceRequestStartParams,
     hdrs,
+    web,
 )
 from yarl import URL
 
-from aiohttp_retry import ExponentialRetry, ListRetry, RetryClient
+from aiohttp_retry import ExponentialRetry, FibonacciRetry, ListRetry, RetryClient
 from aiohttp_retry.client import RequestParams
 from tests.app import App
 
@@ -510,3 +513,37 @@ async def test_list_retry_all_failed(aiohttp_client: pytest_aiohttp.plugin.Aioht
         assert test_app.counter == 3
 
     await retry_client.close()
+
+
+@pytest.mark.parametrize("concurrent", [False, True])
+async def test_fibonacci_retry_independent_requests(
+    aiohttp_client: pytest_aiohttp.plugin.AiohttpClient,
+    concurrent: bool,
+) -> None:
+    counts: dict[str, int] = {}
+
+    async def handler(request: web.Request) -> web.Response:
+        counts[request.path] = counts.get(request.path, 0) + 1
+        return web.Response(status=503 if counts[request.path] == 1 else 200)
+
+    app = web.Application()
+    app.router.add_get("/{name}", handler)
+    client = await aiohttp_client(app)
+    retry = FibonacciRetry(multiplier=0.001)
+    async with RetryClient(client_session=client, retry_options=retry) as retry_client:
+
+        async def request(path: str) -> None:
+            async with retry_client.get(path) as response:
+                assert response.status == 200
+
+        with patch.object(retry, "get_timeout", wraps=retry.get_timeout) as get_timeout:
+            if concurrent:
+                await asyncio.gather(request("/first"), request("/second"))
+            else:
+                await request("/first")
+                await request("/second")
+            assert [call.kwargs["attempt"] for call in get_timeout.call_args_list] == [1, 1]
+
+    assert counts == {"/first": 2, "/second": 2}
+    # Each completed request must leave the first retry delay unchanged.
+    assert retry.get_timeout(1) == 0.002

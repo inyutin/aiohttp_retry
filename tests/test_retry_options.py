@@ -30,7 +30,7 @@ def test_list_retry() -> None:
 
 def test_fibonacci_retry() -> None:
     retry = FibonacciRetry(attempts=10, multiplier=2, max_timeout=60)
-    timeouts = [retry.get_timeout(x) for x in range(10)]
+    timeouts = [retry.get_timeout(x) for x in range(1, 11)]
     assert timeouts == [4.0, 6.0, 10.0, 16.0, 26.0, 42.0, 60, 60, 60, 60]
 
 
@@ -54,3 +54,15 @@ def test_jitter_retry() -> None:
     ]
     for idx, timeout in enumerate(timeouts):
         assert abs(timeout - expected[idx]) < 0.1
+
+
+def test_fibonacci_retry_reused() -> None:
+    retry = FibonacciRetry(multiplier=2, max_timeout=60)
+    for _ in range(2):
+        assert [retry.get_timeout(attempt) for attempt in (1, 2, 3)] == [4.0, 6.0, 10.0]
+
+
+def test_fibonacci_retry_interleaved() -> None:
+    retry = FibonacciRetry(multiplier=2, max_timeout=60)
+    attempts = [1, 2, 1, 3, 2, 3]
+    assert [retry.get_timeout(attempt) for attempt in attempts] == [4.0, 6.0, 4.0, 10.0, 6.0, 10.0]

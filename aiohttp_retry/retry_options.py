@@ -172,19 +172,18 @@ class FibonacciRetry(RetryOptionsBase):
 
         self.max_timeout = max_timeout
         self.multiplier = multiplier
-        self.prev_step = 1.0
-        self.current_step = 1.0
 
     def get_timeout(
         self,
-        attempt: int,  # noqa: ARG002
+        attempt: int,
         response: ClientResponse | None = None,  # noqa: ARG002
     ) -> float:
-        new_current_step = self.prev_step + self.current_step
-        self.prev_step = self.current_step
-        self.current_step = new_current_step
+        # RetryClient numbers attempts from one; the first delay is 2 * multiplier.
+        prev_step, current_step = 1.0, 2.0
+        for _ in range(1, attempt):
+            prev_step, current_step = current_step, prev_step + current_step
 
-        return min(self.multiplier * new_current_step, self.max_timeout)
+        return min(self.multiplier * current_step, self.max_timeout)
 
 
 class JitterRetry(ExponentialRetry):

@@ -128,6 +128,10 @@ async def main():
 
     await retry_client.close()
 ```
+When `trace_request_ctx` is a mapping (or omitted), retry tracing includes
+`current_attempt`. Other context objects are passed through unchanged, matching
+aiohttp; they do not receive an additional `current_attempt` field.
+
 Look tests for more examples. \
 **Be aware: last request returns as it is.**  
 **If the last request ended with exception, that this exception will be raised from RetryClient request**
@@ -196,7 +200,7 @@ class RequestParams:
     method: str
     url: _RAW_URL_TYPE
     headers: dict[str, Any] | None = None
-    trace_request_ctx: dict[str, Any] | None = None
+    trace_request_ctx: Any = None
     kwargs: dict[str, Any] | None = None
 ```
 

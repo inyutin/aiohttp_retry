@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from abc import abstractmethod
-from collections.abc import Awaitable, Callable, Generator
+from collections.abc import Awaitable, Callable, Generator, Mapping
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
@@ -53,7 +53,7 @@ class RequestParams:
     method: str
     url: _RAW_URL_TYPE
     headers: dict[str, Any] | None = None
-    trace_request_ctx: dict[str, Any] | None = None
+    trace_request_ctx: Any = None
     kwargs: dict[str, Any] | None = None
 
 
@@ -107,14 +107,18 @@ class _RequestContext:
                 except IndexError:
                     params = self._params_list[-1]
 
+                trace_request_ctx = params.trace_request_ctx
+                if trace_request_ctx is None or isinstance(trace_request_ctx, Mapping):
+                    trace_request_ctx = {
+                        "current_attempt": current_attempt,
+                        **(trace_request_ctx or {}),
+                    }
+
                 response: ClientResponse = await self._request_func(
                     params.method,
                     params.url,
                     headers=params.headers,
-                    trace_request_ctx={
-                        "current_attempt": current_attempt,
-                        **(params.trace_request_ctx or {}),
-                    },
+                    trace_request_ctx=trace_request_ctx,
                     **(params.kwargs or {}),
                 )
 

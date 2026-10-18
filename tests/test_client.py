@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import UserDict
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
@@ -20,6 +21,8 @@ from aiohttp_retry.client import RequestParams
 from tests.app import App
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import pytest_aiohttp.plugin
 
     from aiohttp_retry.retry_options import RetryOptionsBase
@@ -150,7 +153,11 @@ async def test_hello_awaitable(aiohttp_client: pytest_aiohttp.plugin.AiohttpClie
     await retry_client.close()
 
 
-async def test_add_trace_request_ctx(aiohttp_client: pytest_aiohttp.plugin.AiohttpClient) -> None:
+@pytest.mark.parametrize("context", [{"foo": "bar"}, UserDict({"foo": "bar"}), {}, None])
+async def test_add_trace_request_ctx(
+    aiohttp_client: pytest_aiohttp.plugin.AiohttpClient,
+    context: Mapping[str, object] | None,
+) -> None:
     actual_request_contexts = []
 
     async def on_request_start(
@@ -168,13 +175,13 @@ async def test_add_trace_request_ctx(aiohttp_client: pytest_aiohttp.plugin.Aioht
     retry_client = RetryClient()
     retry_client._client = await aiohttp_client(test_app.web_app(), trace_configs=[trace_config])
 
-    async with retry_client.get("/sometimes_error", trace_request_ctx={"foo": "bar"}):
+    async with retry_client.get("/sometimes_error", trace_request_ctx=context):
         assert test_app.counter == 3
 
     assert actual_request_contexts == [
         SimpleNamespace(
             trace_request_ctx={
-                "foo": "bar",
+                **(context or {}),
                 "current_attempt": i + 1,
             },
         )
@@ -510,3 +517,31 @@ async def test_list_retry_all_failed(aiohttp_client: pytest_aiohttp.plugin.Aioht
         assert test_app.counter == 3
 
     await retry_client.close()
+
+
+@pytest.mark.parametrize("context", [SimpleNamespace(), object(), [], 0, False, ""])
+async def test_non_mapping_trace_request_ctx(
+    aiohttp_client: pytest_aiohttp.plugin.AiohttpClient,
+    context: object,
+) -> None:
+    actual_contexts = []
+
+    async def on_request_start(
+        _: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        __: TraceRequestStartParams,
+    ) -> None:
+        actual_contexts.append(trace_config_ctx.trace_request_ctx)
+
+    trace_config = TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    test_app = App()
+    client = await aiohttp_client(test_app.web_app(), trace_configs=[trace_config])
+    async with (
+        RetryClient(client_session=client, retry_options=ExponentialRetry(start_timeout=0)) as retry_client,
+        retry_client.get("/sometimes_error", trace_request_ctx=context) as response,
+    ):
+        assert response.status == 200
+
+    assert len(actual_contexts) == 3
+    assert all(actual is context for actual in actual_contexts)

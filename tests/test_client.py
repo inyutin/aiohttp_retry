@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from aiohttp import (
@@ -15,7 +16,7 @@ from aiohttp import (
 )
 from yarl import URL
 
-from aiohttp_retry import ExponentialRetry, ListRetry, RetryClient
+from aiohttp_retry import ExponentialRetry, JitterRetry, ListRetry, RetryClient
 from aiohttp_retry.client import RequestParams
 from tests.app import App
 
@@ -106,6 +107,23 @@ async def test_sometimes_error(aiohttp_client: pytest_aiohttp.plugin.AiohttpClie
 
         assert test_app.counter == 3
 
+    await retry_client.close()
+
+
+async def test_jitter_retry_caps_client_sleep(aiohttp_client: pytest_aiohttp.plugin.AiohttpClient) -> None:
+    retry_options = JitterRetry(attempts=3, max_timeout=0.0)
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(aiohttp_client, retry_options=retry_options)
+
+    with (
+        patch("aiohttp_retry.retry_options.random.uniform", return_value=0.1),
+        patch("aiohttp_retry.client.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        async with retry_client.get("/sometimes_error") as response:
+            assert response.status == 200
+            assert await response.text() == "Ok!"
+
+    assert test_app.counter == 3
+    assert sleep.await_args_list == [call(0.0), call(0.0)]
     await retry_client.close()
 
 

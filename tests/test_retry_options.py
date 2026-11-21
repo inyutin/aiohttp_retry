@@ -1,4 +1,7 @@
 import random
+from unittest.mock import patch
+
+import pytest
 
 from aiohttp_retry import (
     ExponentialRetry,
@@ -50,7 +53,29 @@ def test_jitter_retry() -> None:
         8.1,
         12.9,
         26.6,
-        30.4,
+        30.0,
     ]
     for idx, timeout in enumerate(timeouts):
         assert abs(timeout - expected[idx]) < 0.1
+
+
+@pytest.mark.parametrize(
+    ("max_timeout", "attempt", "jitter", "expected"),
+    [
+        (30.0, 9, 0.5, 30.0),
+        (0.3, 1, 0.5, 0.3),
+        (0.1, 1, 2.0, 0.1),
+        (0.0, 1, 0.5, 0.0),
+        (1.0, 1, 2.0, 1.0),
+        (1.0, 1, 0.5, 0.45),
+        (0.2, 1, 0.0, 0.2),
+        (30.0, 1, 0.0, 0.2),
+    ],
+)
+def test_jitter_retry_respects_max_timeout(max_timeout: float, attempt: int, jitter: float, expected: float) -> None:
+    retry = JitterRetry(max_timeout=max_timeout)
+
+    with patch("aiohttp_retry.retry_options.random.uniform", return_value=jitter):
+        timeout = retry.get_timeout(attempt)
+
+    assert timeout == pytest.approx(expected)

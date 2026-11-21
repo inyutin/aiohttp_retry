@@ -177,6 +177,8 @@ You can define your own timeouts logic or use:
 - ```FibonacciRetry``` with backoff that looks like fibonacci sequence
 - ```JitterRetry``` exponential retry with a bit of randomness
 
+For `JitterRetry`, `max_timeout` limits the total delay, including the random component.
+
 **Important**: you can proceed server response as an parameter for calculating next timeout.  
 However this response can be None, server didn't make a response or you have set up ```raise_for_status=True```
 Look here for an example: https://github.com/inyutin/aiohttp_retry/issues/59

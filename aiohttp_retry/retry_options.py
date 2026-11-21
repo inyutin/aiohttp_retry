@@ -226,4 +226,4 @@ class JitterRetry(ExponentialRetry):
         response: ClientResponse | None = None,  # noqa: ARG002
     ) -> float:
         timeout: float = super().get_timeout(attempt) + random.uniform(0, self._random_interval_size) ** self._factor
-        return timeout
+        return min(timeout, self._max_timeout)

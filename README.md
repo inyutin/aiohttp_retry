@@ -167,6 +167,9 @@ class RetryOptionsBase:
 You can specify `RetryOptions` both for `RetryClient` and it's methods. 
 `RetryOptions` in methods override `RetryOptions` defined in `RetryClient` constructor.
 
+The `methods` option limits retries for both HTTP responses and exceptions. For example,
+`methods={"GET", "HEAD"}` prevents retrying POST requests, including after a connection error.
+
 **Important**: by default all 5xx responses are retried + statuses you specified as ```statuses``` param
 If you will pass ```retry_all_server_errors=False``` than you can manually set what 5xx errors to retry.
 

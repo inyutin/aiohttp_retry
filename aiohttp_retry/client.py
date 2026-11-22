@@ -133,7 +133,7 @@ class _RequestContext:
                     raise
 
                 is_exc_valid = any(isinstance(e, exc) for exc in self._retry_options.exceptions)
-                if not is_exc_valid:
+                if not is_exc_valid or params.method.upper() not in self._retry_options.methods:
                     raise
 
                 debug_message = f"Retrying after exception: {e!r}"

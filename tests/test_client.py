@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from aiohttp import (
     BasicAuth,
+    ClientConnectionError,
     ClientResponse,
     ClientResponseError,
     ClientSession,
@@ -368,6 +370,63 @@ async def test_dont_retry_if_not_in_retry_methods(aiohttp_client: pytest_aiohttp
         assert test_app.counter == 1
 
     await retry_client.close()
+
+
+@pytest.mark.parametrize(
+    ("method", "methods", "expected_attempts"),
+    [
+        ("POST", {"GET"}, 1),
+        ("post", {"GET"}, 1),
+        ("DELETE", {"GET"}, 1),
+        ("GET", set(), 1),
+        ("GET", {"GET"}, 3),
+        ("get", {"get"}, 3),
+        ("POST", {"POST"}, 3),
+        ("pOsT", {"post"}, 3),
+    ],
+)
+async def test_exception_retries_respect_methods(method: str, methods: set[str], expected_attempts: int) -> None:
+    error = ClientConnectionError("disconnected")
+    retry_options = ExponentialRetry(attempts=3, start_timeout=0, methods=methods, exceptions={ClientConnectionError})
+    async with (
+        ClientSession() as session,
+        RetryClient(client_session=session, retry_options=retry_options) as retry_client,
+    ):
+        with patch.object(session, "request", new_callable=AsyncMock, side_effect=error) as request:
+            with pytest.raises(ClientConnectionError) as exc_info:
+                await retry_client.request(method, "https://example.com/resource")
+
+    assert exc_info.value is error
+    assert request.await_count == expected_attempts
+
+
+@pytest.mark.parametrize(("methods", "expected_attempts"), [({"POST"}, 1), ({"GET"}, 3)])
+async def test_raise_for_status_retries_respect_methods(
+    aiohttp_client: pytest_aiohttp.plugin.AiohttpClient, methods: set[str], expected_attempts: int
+) -> None:
+    retry_options = ExponentialRetry(attempts=3, start_timeout=0, methods=methods, exceptions={ClientResponseError})
+    retry_client, test_app = await get_retry_client_and_test_app_for_test(
+        aiohttp_client, retry_options=retry_options, raise_for_status=True
+    )
+    with pytest.raises(ClientResponseError):
+        await retry_client.get("/internal_error")
+
+    assert test_app.counter == expected_attempts
+    await retry_client.close()
+
+
+async def test_exception_retries_use_current_request_method() -> None:
+    retry_options = ExponentialRetry(attempts=3, start_timeout=0, methods={"GET"}, exceptions={ClientConnectionError})
+    params = [RequestParams(method=method, url="https://example.com/resource") for method in ("GET", "POST", "GET")]
+    async with (
+        ClientSession() as session,
+        RetryClient(client_session=session, retry_options=retry_options) as retry_client,
+    ):
+        with patch.object(session, "request", new_callable=AsyncMock, side_effect=ClientConnectionError) as request:
+            with pytest.raises(ClientConnectionError):
+                await retry_client.requests(params_list=params)
+
+    assert [args.args[0] for args in request.await_args_list] == ["GET", "POST"]
 
 
 async def test_implicit_client(aiohttp_client: pytest_aiohttp.plugin.AiohttpClient) -> None:

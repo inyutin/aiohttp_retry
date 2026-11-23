@@ -351,12 +351,14 @@ class RetryClient:
         **kwargs: Any,
     ) -> _RequestContext:
         url_list = _url_to_urls(url)
+        headers = kwargs.pop("headers", {})
+        trace_request_ctx = kwargs.pop("trace_request_ctx", None)
         params_list = [
             RequestParams(
                 method=method,
                 url=url,
-                headers=kwargs.pop("headers", {}),
-                trace_request_ctx=kwargs.pop("trace_request_ctx", None),
+                headers=headers,
+                trace_request_ctx=trace_request_ctx,
                 kwargs=kwargs,
             )
             for url in url_list

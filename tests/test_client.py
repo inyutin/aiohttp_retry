@@ -12,6 +12,7 @@ from aiohttp import (
     TraceConfig,
     TraceRequestStartParams,
     hdrs,
+    web,
 )
 from yarl import URL
 
@@ -214,6 +215,59 @@ async def test_change_urls_as_tuple_in_request(
         assert test_app.counter == 2
 
     await retry_client.close()
+
+
+@pytest.mark.parametrize("as_tuple", [False, True])
+@pytest.mark.parametrize("metadata", ["headers", "trace", "both", "omitted"])
+async def test_multi_url_request_metadata(
+    aiohttp_client: pytest_aiohttp.plugin.AiohttpClient,
+    as_tuple: bool,
+    metadata: str,
+) -> None:
+    kwargs: dict[str, dict[str, str]] = {}
+    if metadata in {"headers", "both"}:
+        kwargs["headers"] = {"Authorization": "Bearer retry-token"}
+    if metadata in {"trace", "both"}:
+        kwargs["trace_request_ctx"] = {"request_id": "request-1"}
+    received: list[tuple[str, str | None]] = []
+    contexts: list[dict[str, object]] = []
+
+    async def handle(request: web.Request) -> web.Response:
+        authorization = request.headers.get("Authorization")
+        received.append((request.path, authorization))
+        if authorization != kwargs.get("headers", {}).get("Authorization"):
+            return web.Response(status=401)
+        return web.Response(text="Ok!", status=503 if len(received) < 3 else 200)
+
+    async def on_request_start(
+        _: ClientSession,
+        context: SimpleNamespace,
+        __: TraceRequestStartParams,
+    ) -> None:
+        contexts.append(context.trace_request_ctx)
+
+    app = web.Application()
+    app.router.add_get("/{path}", handle)
+    trace_config = TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+    urls: list[str] | tuple[str, ...] = ["/primary", "/fallback"]
+    if as_tuple:
+        urls = tuple(urls)
+    async with (
+        RetryClient(client_session=client, retry_options=ExponentialRetry(start_timeout=0)) as retry_client,
+        retry_client.get(urls, **kwargs) as response,
+    ):
+        assert response.status == 200
+        assert await response.text() == "Ok!"
+
+    expected_auth = kwargs.get("headers", {}).get("Authorization")
+    assert received == [("/primary", expected_auth), ("/fallback", expected_auth), ("/fallback", expected_auth)]
+    assert contexts == [{"current_attempt": i, **kwargs.get("trace_request_ctx", {})} for i in range(1, 4)]
+    if "headers" in kwargs:
+        assert kwargs["headers"] == {"Authorization": "Bearer retry-token"}
+    if "trace_request_ctx" in kwargs:
+        assert kwargs["trace_request_ctx"] == {"request_id": "request-1"}
 
 
 @pytest.mark.parametrize("url", [{"/ping", "/internal_error"}, []])

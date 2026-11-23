@@ -229,6 +229,9 @@ await retry_client.close()
 In this example we request ```/interval_error```, fail and then successfully request ```/ping```.
 If you specify less urls than ```attempts``` number in ```RetryOptions```, ```RetryClient``` will request last url at last attempts.
 This means that in example above we would request ```/ping``` once again in case of failure.
+Headers and `trace_request_ctx` supplied to the request are reused for every URL,
+including repeated attempts at the last URL. Use `requests` with `RequestParams`
+when these values should differ between attempts.
 
 ### Types
 
